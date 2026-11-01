@@ -1,12 +1,5 @@
-import { Drawer } from 'expo-router/drawer';
-import DrawerContents from '@/components/layouts/DrawerContents';
+import { Slot } from 'expo-router';
 
-export default function DrawerWithTabsLayout() {
-  return (
-    <Drawer
-      drawerContent={DrawerContents}
-      screenOptions={{ headerShown: false, drawerType: 'back' }}>
-      <Drawer.Screen name="(tabs)" options={{ title: 'Tabs' }} />
-    </Drawer>
-  );
+export default function MainLayout() {
+  return <Slot />;
 }

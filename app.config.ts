@@ -4,8 +4,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const expoProjectId = process.env.EXPO_PROJECT_ID ?? '18adc0d0-eb1d-11e9-8009-d524ed5cc4a7';
   const expoConfig: ExpoConfig = {
     ...config,
-    slug: process.env.EXPO_SLUG ?? 'react-native-boilerplate',
-    name: process.env.EXPO_NAME ?? 'React Native Boilerplate',
+    slug: process.env.EXPO_SLUG ?? 'magyar-recall',
+    name: process.env.EXPO_NAME ?? 'Magyar Recall',
+    scheme: 'magyar-recall',
+    owner: undefined,
     ios: {
       ...config.ios,
       bundleIdentifier:
@@ -18,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     android: {
       ...config.android,
-      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.watarumaeda.react_native_boilerplate',
+      package: process.env.EXPO_ANDROID_PACKAGE ?? 'com.magyarrecall.app',
     },
     web: {
       ...config.web,
@@ -27,6 +29,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       favicon: './src/assets/images/logo-sm.png',
     },
     updates: {
+      enabled: false,
       url: `https://u.expo.dev/${expoProjectId}`,
     },
     extra: {
@@ -39,6 +42,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       'expo-router',
       'expo-asset',
+      'expo-notifications',
+      'expo-document-picker',
+      'expo-sharing',
+      'expo-image',
+      'expo-status-bar',
+      'expo-web-browser',
       [
         'expo-splash-screen',
         {

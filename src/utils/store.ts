@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import app from '@/slices/app.slice';
+import learning from '@/slices/learning.slice';
 import config from '@/utils/config';
 import { Env } from '@/types/env';
 
 const store = configureStore({
   reducer: {
     app,
+    learning,
     // add more store ...
   },
   devTools: config.env === Env.dev,

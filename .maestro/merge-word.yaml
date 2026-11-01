@@ -1,0 +1,30 @@
+appId: ${APP_ID}
+---
+- runFlow: subflows/launch.yaml
+- tapOn:
+    id: nav-settings
+- tapOn:
+    id: add-word
+- tapOn:
+    id: add-word-hungarian
+- inputText: "Répa"
+- tapOn:
+    id: add-word-english
+- inputText: "carrot"
+- tapOn:
+    id: add-word-spanish
+- inputText: "zanahoria"
+- hideKeyboard
+- tapOn:
+    id: save-word
+- assertVisible: Review English meanings
+- tapOn:
+    id: merge-next
+- assertVisible: Review Spanish meanings
+- tapOn:
+    id: merge-next
+- assertVisible: Review tags
+- tapOn:
+    id: cancel-word
+- assertVisible:
+    id: add-word

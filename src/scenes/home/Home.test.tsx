@@ -1,0 +1,305 @@
+import React from 'react';
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
+import { Provider } from 'react-redux';
+import store from '@/utils/store';
+import Home from './Home';
+import { Alert } from 'react-native';
+import { languageChanged, vocabularyImported } from '@/slices/learning.slice';
+import * as sessionUtils from '@/utils/session';
+import * as vocabularyFiles from '@/services/vocabularyFile.service';
+
+beforeEach(() => {
+  store.dispatch(languageChanged('en'));
+});
+afterEach(() => jest.restoreAllMocks());
+
+jest.mock('@/hooks/useLearningPersistence', () => ({ useLearningPersistence: () => true }));
+jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
+jest.mock('@/services/reminders.service', () => ({
+  syncRemindersAsync: jest.fn(async () => 'disabled'),
+}));
+jest.mock('expo-notifications', () => ({
+  addNotificationResponseReceivedListener: () => ({ remove: jest.fn() }),
+  getLastNotificationResponseAsync: jest.fn(async () => null),
+}));
+
+it('starts a review and reveals a translation', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByText('Start practice'));
+  await userEvent.press(screen.getByText('Begin session'));
+  await userEvent.press(screen.getByText('Show answer'));
+  expect(screen.getByText('I remembered')).toBeTruthy();
+});
+
+it('starts practice using only words from the selected topic', async () => {
+  const select = jest.spyOn(sessionUtils, 'selectWords');
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByText('Start practice'));
+  await userEvent.press(screen.getByText('Food & drink'));
+  await userEvent.press(screen.getByText('Begin session'));
+  const chosen = select.mock.results[0].value as ReturnType<typeof sessionUtils.selectWords>;
+  expect(chosen.length).toBeGreaterThan(0);
+  expect(
+    chosen.every(word => word.topics.some(tag => /food|drink|vegetable|meal/i.test(tag))),
+  ).toBe(true);
+});
+
+it('switches support language and removes a practiced word', async () => {
+  jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+    buttons?.find(button => button.style === 'destructive')?.onPress?.();
+  });
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByText('Settings'));
+  await user.press(screen.getByText('Español'));
+  await user.press(screen.getByText('Inicio'));
+  await user.press(screen.getByText('Practicar'));
+  await user.press(screen.getByText('Comenzar sesión'));
+  await user.press(screen.getByText('Quitar de práctica'));
+  await user.press(screen.getByText('Inicio'));
+  await user.press(screen.getByText('Mis palabras'));
+  await user.press(screen.getByText('Ver quitadas'));
+  expect(screen.getAllByText('Restaurar').length).toBeGreaterThan(0);
+});
+
+it('shows bottom navigation and asks before removing a word', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  expect(screen.getByTestId('nav-words')).toBeTruthy();
+  await userEvent.press(screen.getByText('Start practice'));
+  await userEvent.press(screen.getByText('Begin session'));
+  await userEvent.press(screen.getByTestId('remove-word'));
+  expect(alert).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.any(String),
+    expect.arrayContaining([
+      expect.objectContaining({ style: 'cancel' }),
+      expect.objectContaining({ style: 'destructive' }),
+    ]),
+  );
+  alert.mockRestore();
+});
+
+it('shows weekly progress and records a completed session', async () => {
+  jest.spyOn(sessionUtils, 'selectWords').mockReturnValue([
+    {
+      id: 'test-word',
+      hu: 'alma',
+      en: 'apple',
+      es: 'manzana',
+      topics: [],
+      sourceRows: [],
+      eligible: true,
+    },
+  ]);
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  expect(screen.getByText('This week')).toBeTruthy();
+  expect(screen.queryByText('Choose a practice topic')).toBeNull();
+  await userEvent.press(screen.getByText('Start practice'));
+  expect(screen.getByText('Choose a topic')).toBeTruthy();
+  await userEvent.press(screen.getByText('Begin session'));
+  await userEvent.press(screen.getByText('Show answer'));
+  await userEvent.press(screen.getByText('I remembered'));
+  expect(screen.getByText('Session complete!')).toBeTruthy();
+  await userEvent.press(screen.getByTestId('nav-home'));
+  expect(screen.getByText('1 / 1 sessions')).toBeTruthy();
+  await userEvent.press(screen.getByText(/View previous sessions/));
+  expect(screen.getByText('1 / 1 correct')).toBeTruthy();
+  await userEvent.press(screen.getByText('1 / 1 correct'));
+  expect(screen.getByText('Session details')).toBeTruthy();
+  expect(screen.getByText('Expected: apple')).toBeTruthy();
+  expect(screen.getByText('Your answer: Remembered (self-assessed)')).toBeTruthy();
+});
+
+it('searches words and their editable tags and exposes the rest of the dictionary', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByTestId('nav-words'));
+  expect(screen.getByTestId('dictionary-list')).toBeTruthy();
+  await user.type(screen.getByPlaceholderText('Search words or tags'), 'répa');
+  await user.press(screen.getAllByText('Edit tags')[0]);
+  const field = screen.getByLabelText('Tags separated by commas');
+  await user.clear(field);
+  await user.type(field, 'garden');
+  await user.press(screen.getByText('Save tags'));
+  const search = screen.getByPlaceholderText('Search words or tags');
+  await user.clear(search);
+  await user.type(search, 'garden');
+  expect(screen.getByText('Répa')).toBeTruthy();
+});
+
+it('keeps dictionary rendering bounded when switching sort order', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByTestId('nav-words'));
+  await user.press(screen.getByText('Sort: alphabetically'));
+  expect(screen.getAllByText('Edit tags').length).toBeLessThanOrEqual(20);
+});
+
+it('offers a back-to-top control after scrolling the dictionary', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByTestId('nav-words'));
+  expect(screen.queryByTestId('scroll-to-top')).toBeNull();
+  await fireEvent.scroll(screen.getByTestId('dictionary-list'), {
+    nativeEvent: {
+      contentOffset: { x: 0, y: 700 },
+      contentSize: { width: 400, height: 2000 },
+      layoutMeasurement: { width: 400, height: 800 },
+    },
+  });
+  expect(screen.getByLabelText('Back to top')).toBeTruthy();
+});
+
+it('adds a local word that can be found without accents', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByTestId('nav-settings'));
+  await user.press(screen.getByText('Add word'));
+  await user.type(screen.getByLabelText('Hungarian'), 'különleges próbaszó');
+  await user.type(screen.getByLabelText('English'), 'special');
+  await user.type(screen.getByLabelText('Español'), 'especial');
+  await user.press(screen.getByText('Save word'));
+  await user.press(screen.getByTestId('nav-words'));
+  await user.type(screen.getByPlaceholderText('Search words or tags'), 'kulonleges probaszo');
+  expect(screen.getByText('különleges próbaszó')).toBeTruthy();
+});
+
+it('keeps vocabulary management in settings and cancels an unsaved word', async () => {
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByTestId('nav-words'));
+  expect(screen.queryByText('Add word')).toBeNull();
+  expect(screen.queryByText('Import CSV')).toBeNull();
+  await user.press(screen.getByTestId('nav-settings'));
+  expect(screen.getByText('Export CSV')).toBeTruthy();
+  await user.press(screen.getByText('Add word'));
+  await user.type(screen.getByLabelText('Hungarian'), 'lemondott');
+  await user.press(screen.getByText('Cancel'));
+  expect(screen.queryByLabelText('Hungarian')).toBeNull();
+  await user.press(screen.getByText('Add word'));
+  expect(screen.getByLabelText('Hungarian').props.value).toBe('');
+});
+
+it('guides a duplicate through meanings and tags before saving', async () => {
+  store.dispatch(
+    vocabularyImported([
+      {
+        id: 'merge-test',
+        hu: 'tesztösszevonás',
+        en: 'old meaning',
+        es: 'significado viejo',
+        tags: ['old tag'],
+        removed: false,
+      },
+    ]),
+  );
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  const user = userEvent.setup();
+  await user.press(screen.getByTestId('nav-settings'));
+  await user.press(screen.getByText('Add word'));
+  await user.type(screen.getByLabelText('Hungarian'), 'Tesztösszevonás');
+  await user.type(screen.getByLabelText('English'), 'new meaning');
+  await user.type(screen.getByLabelText('Español'), 'significado nuevo');
+  await user.type(screen.getByLabelText('Tags separated by commas'), 'new tag');
+  await user.press(screen.getByText('Save word'));
+  expect(screen.getByText('Review English meanings')).toBeTruthy();
+  await user.press(screen.getByText('Next'));
+  expect(screen.getByText('Review Spanish meanings')).toBeTruthy();
+  await user.press(screen.getByText('Next'));
+  await user.press(screen.getByLabelText('Remove tag old tag'));
+  await user.press(screen.getByText('Merge word'));
+  const state = store.getState().learning;
+  expect(state.userWords['merge-test'].en).toBe('old meaning\nnew meaning');
+  expect(state.customTags['merge-test']).toEqual(['new tag']);
+});
+
+it('exports vocabulary from settings', async () => {
+  const exportFile = jest.spyOn(vocabularyFiles, 'exportVocabularyFileAsync').mockResolvedValue();
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByTestId('nav-settings'));
+  await userEvent.press(screen.getByText('Export CSV'));
+  expect(exportFile).toHaveBeenCalledWith(
+    expect.stringContaining('id,hungarian,english,spanish,tags,removed'),
+  );
+});
+
+it('rejects CSV imports that would create a duplicate instead of overwriting a card', async () => {
+  store.dispatch(
+    vocabularyImported([
+      {
+        id: 'csv-existing',
+        hu: 'tesztütközés',
+        en: 'original',
+        es: 'original',
+        tags: [],
+        removed: false,
+      },
+    ]),
+  );
+  jest
+    .spyOn(vocabularyFiles, 'pickVocabularyFileAsync')
+    .mockResolvedValue(
+      'id,hungarian,english,spanish,tags,removed\nnew-id,Tesztütközés,changed,cambiado,,false',
+    );
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByTestId('nav-settings'));
+  await userEvent.press(screen.getByText('Import CSV'));
+  expect(alert).toHaveBeenCalledWith(
+    'Could not import',
+    expect.stringContaining('duplicate words'),
+  );
+  expect(store.getState().learning.userWords['csv-existing'].en).toBe('original');
+});
