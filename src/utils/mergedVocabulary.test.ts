@@ -1,6 +1,5 @@
 import { consolidateDuplicates, findDuplicateWords, mergedVocabulary } from './mergedVocabulary';
-import { selectWords } from './session';
-import { Word } from './vocabulary';
+import { LegacyWord as Word } from './vocabulary';
 
 it('includes new entries and updates existing ones without duplicating IDs', () => {
   const base: Word = {
@@ -16,11 +15,7 @@ it('includes new entries and updates existing ones without duplicating IDs', () 
   const added: Word = { ...base, id: 'new', hu: 'kenyér' };
   const words = mergedVocabulary([base], { old: edited, new: added });
   expect(words.map(word => word.hu)).toEqual(['körte', 'kenyér']);
-  expect(
-    selectWords(words, {}, new Date())
-      .map(word => word.id)
-      .sort(),
-  ).toEqual(['new', 'old']);
+  expect(words.map(word => word.id).sort()).toEqual(['new', 'old']);
 });
 
 it('consolidates duplicate cards and retains their tags and latest review', () => {

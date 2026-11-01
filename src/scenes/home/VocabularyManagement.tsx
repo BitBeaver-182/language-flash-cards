@@ -16,16 +16,16 @@ import useColorScheme from '@/hooks/useColorScheme';
 import { isIos } from '@/utils/deviceInfo';
 import { State } from '@/utils/store';
 import { vocabularyImported } from '@/slices/learning.slice';
-import { findDuplicateWords, mergedVocabulary } from '@/utils/mergedVocabulary';
+import { normalizeWordKey } from '@/utils/vocabularyModel';
 import { exportVocabularyCsv, importVocabularyCsv } from '@/utils/vocabularyCsv';
 import { exportVocabularyFileAsync, pickVocabularyFileAsync } from '@/services';
-import catalog from '@/data/vocabulary.json';
 import { getWordTags } from '@/utils/tags';
 import { Word } from '@/utils/vocabulary';
 import { Ionicons } from '@expo/vector-icons';
+import { randomUUID } from 'expo-crypto';
 
 function createWordId(): string {
-  return `user:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+  return randomUUID();
 }
 
 const styles = StyleSheet.create({
@@ -96,10 +96,8 @@ const styles = StyleSheet.create({
 export default function VocabularyManagement() {
   const dispatch = useDispatch();
   const { isDark } = useColorScheme();
-  const { progress, customTags, language, userWords } = useSelector(
-    (state: State) => state.learning,
-  );
-  const words = useMemo(() => mergedVocabulary(catalog, userWords), [userWords]);
+  const { progress, language, words: userWords } = useSelector((state: State) => state.learning);
+  const words = useMemo(() => Object.values(userWords), [userWords]);
   const es = language === 'es';
   const [visible, setVisible] = useState(false);
   const [hu, setHu] = useState('');
@@ -130,9 +128,7 @@ export default function VocabularyManagement() {
       Alert.alert(es ? 'Completa los tres idiomas' : 'Fill in all three languages');
       return;
     }
-    const normalized = (value: string) =>
-      value.normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('hu');
-    const existing = words.find(word => normalized(word.hu) === normalized(hu));
+    const existing = words.find(word => normalizeWordKey(word.hu) === normalizeWordKey(hu));
     if (existing) {
       const unique = (values: string[]) =>
         Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
@@ -143,7 +139,7 @@ export default function VocabularyManagement() {
       setEnglishOptions(english);
       setSpanishMeanings(spanishValues);
       setSpanishOptions(spanishValues);
-      setMergeTags(unique([...getWordTags(existing, customTags[existing.id]), ...tags.split(',')]));
+      setMergeTags(unique([...getWordTags(existing), ...tags.split(',')]));
       setStep(1);
       return;
     }
@@ -185,7 +181,7 @@ export default function VocabularyManagement() {
   }
   async function exportCsv() {
     try {
-      await exportVocabularyFileAsync(exportVocabularyCsv(words, customTags, progress));
+      await exportVocabularyFileAsync(exportVocabularyCsv(words, progress));
     } catch {
       Alert.alert(
         es ? 'No se pudo exportar' : 'Could not export',
@@ -197,19 +193,16 @@ export default function VocabularyManagement() {
     try {
       const csv = await pickVocabularyFileAsync();
       if (csv === null) return;
-      const rows = importVocabularyCsv(csv).map((row, index) => ({
+      const rows = importVocabularyCsv(csv).map(row => ({
         ...row,
-        id: row.id || `${createWordId()}:${index}`,
+        id: row.id || createWordId(),
       }));
       const replacedIds = new Set(rows.map(row => row.id));
       const candidates = [
         ...words.filter(word => !replacedIds.has(word.id)),
-        ...rows.map(row => ({ ...row, topics: [], sourceRows: [], eligible: true })),
+        ...rows.map(row => ({ ...row, eligible: true })),
       ];
-      if (
-        rows.some(row => userWords[row.id]?.mergedInto) ||
-        findDuplicateWords(candidates).length
-      ) {
+      if (new Set(candidates.map(word => normalizeWordKey(word.hu))).size !== candidates.length) {
         throw new Error(
           es
             ? 'El archivo contiene palabras duplicadas. Añádelas individualmente para combinarlas.'
@@ -285,7 +278,7 @@ export default function VocabularyManagement() {
           : 'For Excel: export, keep the id column, and separate tags with |. Save as CSV UTF-8, then import.'}
       </Text>
       <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-        <KeyboardAvoidingView style={styles.backdrop} behavior={isIos ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={styles.backdrop} behavior={isIos ? 'padding' : 'height'}>
           <View
             style={[styles.sheet, isDark && { backgroundColor: colors.darkSurface }]}
             accessibilityViewIsModal>

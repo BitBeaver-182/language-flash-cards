@@ -1,4 +1,4 @@
-import { getWordTags } from './tags';
+import { getLegacyWordTags } from './tags';
 
 it('creates searchable tags from source labels and distinguishes phrases', () => {
   const word = {
@@ -10,6 +10,6 @@ it('creates searchable tags from source labels and distinguishes phrases', () =>
     sourceRows: [1],
     eligible: true,
   };
-  expect(getWordTags(word)).toEqual(['Adverbs', 'Phrase']);
-  expect(getWordTags(word, ['My tag'])).toEqual(['My tag']);
+  expect(getLegacyWordTags(word)).toEqual(['Adverbs', 'Phrase']);
+  expect(getLegacyWordTags(word, ['My tag'])).toEqual(['My tag']);
 });

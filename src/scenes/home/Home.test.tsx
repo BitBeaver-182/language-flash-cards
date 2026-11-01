@@ -14,6 +14,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 jest.mock('@/hooks/useLearningPersistence', () => ({ useLearningPersistence: () => true }));
+jest.mock('expo-crypto', () => ({ randomUUID: () => `test-${Math.random()}` }));
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 jest.mock('@/services/reminders.service', () => ({
   syncRemindersAsync: jest.fn(async () => 'disabled'),
@@ -43,13 +44,12 @@ it('starts practice using only words from the selected topic', async () => {
     </Provider>,
   );
   await userEvent.press(screen.getByText('Start practice'));
-  await userEvent.press(screen.getByText('Food & drink'));
+  await userEvent.type(screen.getByTestId('search-tags'), 'Vegetables');
+  await userEvent.press(screen.getByText('Vegetables'));
   await userEvent.press(screen.getByText('Begin session'));
   const chosen = select.mock.results[0].value as ReturnType<typeof sessionUtils.selectWords>;
   expect(chosen.length).toBeGreaterThan(0);
-  expect(
-    chosen.every(word => word.topics.some(tag => /food|drink|vegetable|meal/i.test(tag))),
-  ).toBe(true);
+  expect(chosen.every(word => word.tags.includes('Vegetables'))).toBe(true);
 });
 
 it('switches support language and removes a practiced word', async () => {
@@ -103,8 +103,7 @@ it('shows weekly progress and records a completed session', async () => {
       hu: 'alma',
       en: 'apple',
       es: 'manzana',
-      topics: [],
-      sourceRows: [],
+      tags: [],
       eligible: true,
     },
   ]);
@@ -116,7 +115,7 @@ it('shows weekly progress and records a completed session', async () => {
   expect(screen.getByText('This week')).toBeTruthy();
   expect(screen.queryByText('Choose a practice topic')).toBeNull();
   await userEvent.press(screen.getByText('Start practice'));
-  expect(screen.getByText('Choose a topic')).toBeTruthy();
+  expect(screen.getByText('Choose a tag')).toBeTruthy();
   await userEvent.press(screen.getByText('Begin session'));
   await userEvent.press(screen.getByText('Show answer'));
   await userEvent.press(screen.getByText('I remembered'));
@@ -253,8 +252,8 @@ it('guides a duplicate through meanings and tags before saving', async () => {
   await user.press(screen.getByLabelText('Remove tag old tag'));
   await user.press(screen.getByText('Merge word'));
   const state = store.getState().learning;
-  expect(state.userWords['merge-test'].en).toBe('old meaning\nnew meaning');
-  expect(state.customTags['merge-test']).toEqual(['new tag']);
+  expect(state.words['merge-test'].en).toBe('old meaning\nnew meaning');
+  expect(state.words['merge-test'].tags).toEqual(['new tag']);
 });
 
 it('exports vocabulary from settings', async () => {
@@ -301,5 +300,5 @@ it('rejects CSV imports that would create a duplicate instead of overwriting a c
     'Could not import',
     expect.stringContaining('duplicate words'),
   );
-  expect(store.getState().learning.userWords['csv-existing'].en).toBe('original');
+  expect(store.getState().learning.words['csv-existing'].en).toBe('original');
 });

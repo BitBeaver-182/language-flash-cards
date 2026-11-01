@@ -6,6 +6,7 @@ import {
   Switch,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -37,8 +38,6 @@ import { getReminderMinutes } from '@/utils/reminderSchedule';
 import { getWeekProgress, summarizeSessions } from '@/utils/sessionHistory';
 import { getWordTags } from '@/utils/tags';
 import { Word } from '@/utils/vocabulary';
-import catalog from '@/data/vocabulary.json';
-import { mergedVocabulary } from '@/utils/mergedVocabulary';
 import { sentences } from '@/data/sentences';
 import WordsList from './WordsList';
 import VocabularyManagement from './VocabularyManagement';
@@ -145,25 +144,6 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
 });
 
-const topicGroups = [
-  {
-    id: 'people',
-    en: 'People & personality',
-    es: 'Personas y personalidad',
-    match: /people|person|adjectiv|family|profession/i,
-  },
-  { id: 'home', en: 'Home & objects', es: 'Casa y objetos', match: /home|house|housing|object/i },
-  { id: 'food', en: 'Food & drink', es: 'Comida y bebida', match: /food|drink|vegetable|meal/i },
-  {
-    id: 'places',
-    en: 'Places & travel',
-    es: 'Lugares y viajes',
-    match: /place|countr|cities|travel|transport/i,
-  },
-  { id: 'actions', en: 'Actions', es: 'Acciones', match: /verb/i },
-  { id: 'time', en: 'Time & numbers', es: 'Tiempo y números', match: /time|number/i },
-];
-
 function MasteryBadge({
   value,
   es,
@@ -228,8 +208,7 @@ export default function Home() {
     remindersEnabled,
     sessions,
     dailyGoal,
-    customTags,
-    userWords,
+    words: userWords,
   } = useSelector((state: State) => state.learning);
   const [page, setPage] = useState<
     'home' | 'practice' | 'topics' | 'history' | 'session-detail' | 'words' | 'settings'
@@ -241,6 +220,7 @@ export default function Home() {
   const [choiceAnswer, setChoiceAnswer] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [topic, setTopic] = useState('');
+  const [tagQuery, setTagQuery] = useState('');
   const [status, setStatus] = useState('');
   const [today, setToday] = useState(() => new Date());
   const lastNotification = useRef('');
@@ -252,9 +232,12 @@ export default function Home() {
     answers: SessionAnswer[];
   }>({ id: '', correct: 0, total: 0, topic: '', answers: [] });
   const es = language === 'es';
-  const words = useMemo(() => mergedVocabulary(catalog, userWords), [userWords]);
+  const words = useMemo(() => Object.values(userWords), [userWords]);
   const textStyle = [styles.text, isDark && { color: colors.white }];
-  const selectedTopic = topicGroups.find(item => item.id === topic);
+  const availableTags = useMemo(
+    () => Array.from(new Set(words.flatMap(item => item.tags))).sort((a, b) => a.localeCompare(b)),
+    [words],
+  );
   const todaySummary = summarizeSessions(sessions, today);
   const week = getWeekProgress(sessions, today, dailyGoal);
   const word = queue[index];
@@ -264,9 +247,7 @@ export default function Home() {
       : undefined;
   const choices = useMemo(() => {
     if (!word || index % 3 !== 1) return [];
-    const candidates = words.filter(item =>
-      item.topics.some(itemTopic => word.topics.includes(itemTopic)),
-    );
+    const candidates = words.filter(item => item.tags.some(itemTag => word.tags.includes(itemTag)));
     const result = makeChoices(word, candidates, language);
     return result.length ? [...result.slice(1), result[0]] : [];
   }, [word, index, language, words]);
@@ -329,11 +310,7 @@ export default function Home() {
     );
   }
   function start() {
-    const pool = selectedTopic
-      ? words.filter(item =>
-          getWordTags(item, customTags[item.id]).some(value => selectedTopic.match.test(value)),
-        )
-      : words;
+    const pool = topic ? words.filter(item => getWordTags(item).includes(topic)) : words;
     setQueue(selectWords(pool, progress, new Date()));
     setSessionStats({ id: createSessionId(), correct: 0, total: 0, topic, answers: [] });
     setIndex(0);
@@ -517,29 +494,51 @@ export default function Home() {
           {page === 'topics' && (
             <>
               <Text style={[styles.sectionTitle, isDark && { color: colors.white }]}>
-                {es ? 'Elige un tema' : 'Choose a topic'}
+                {es ? 'Elige una etiqueta' : 'Choose a tag'}
               </Text>
               <Text style={textStyle}>
                 {es
                   ? 'Elige qué palabras quieres practicar. La selección se usa al empezar una sesión.'
                   : 'Choose which words to practice. Your selection applies when you start a session.'}
               </Text>
-              {[{ id: '', en: 'All words', es: 'Todas las palabras' }, ...topicGroups].map(item => (
+              {button(es ? 'Comenzar sesión' : 'Begin session', () => start(), 'begin-session')}
+              <TextInput
+                testID="search-tags"
+                accessibilityLabel={es ? 'Buscar etiquetas' : 'Search tags'}
+                placeholder={es ? 'Buscar etiquetas' : 'Search tags'}
+                placeholderTextColor={colors.gray}
+                style={[
+                  styles.input,
+                  isDark && { color: colors.white, backgroundColor: colors.darkSurface },
+                ]}
+                value={tagQuery}
+                onChangeText={setTagQuery}
+              />
+              <Text style={textStyle}>
+                {es ? 'Escribe para buscar todas las etiquetas.' : 'Type to search all tags.'}
+              </Text>
+              {[
+                '',
+                ...availableTags
+                  .filter(tag =>
+                    tag.toLocaleLowerCase().includes(tagQuery.trim().toLocaleLowerCase()),
+                  )
+                  .slice(0, 20),
+              ].map(item => (
                 <TouchableOpacity
-                  key={item.id}
+                  key={item}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: topic === item.id }}
+                  accessibilityState={{ selected: topic === item }}
                   style={[styles.secondary, isDark && { backgroundColor: colors.darkSurface }]}
                   onPress={() => {
-                    setTopic(item.id);
+                    setTopic(item);
                   }}>
                   <Text style={textStyle}>
-                    {es ? item.es : item.en}
-                    {topic === item.id ? '  ✓' : ''}
+                    {item || (es ? 'Todas las palabras' : 'All words')}
+                    {topic === item ? '  ✓' : ''}
                   </Text>
                 </TouchableOpacity>
               ))}
-              {button(es ? 'Comenzar sesión' : 'Begin session', () => start(), 'begin-session')}
             </>
           )}
           {page === 'history' && (
@@ -555,7 +554,6 @@ export default function Home() {
                 </Text>
               ) : (
                 sessions.map(session => {
-                  const group = topicGroups.find(item => item.id === session.topic);
                   return (
                     <TouchableOpacity
                       key={session.id}
@@ -568,13 +566,7 @@ export default function Home() {
                       <View style={styles.statRow}>
                         <View style={styles.wordInfo}>
                           <Text style={textStyle}>
-                            {group
-                              ? es
-                                ? group.es
-                                : group.en
-                              : es
-                                ? 'Todas las palabras'
-                                : 'All words'}
+                            {session.topic || (es ? 'Todas las palabras' : 'All words')}
                           </Text>
                           <Text style={[styles.muted, isDark && { color: colors.darkMuted }]}>
                             {new Date(session.completedAt).toLocaleString(es ? 'es' : 'en', {

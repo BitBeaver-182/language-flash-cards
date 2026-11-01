@@ -1,9 +1,13 @@
-import { Word } from './vocabulary';
+import { LegacyWord, Word } from './vocabulary';
 
-export function getWordTags(word: Word, custom?: string[]): string[] {
+export function getWordTags(word: Word): string[] {
+  return word.tags;
+}
+
+export function getLegacyWordTags(word: LegacyWord, custom?: string[]): string[] {
   if (custom) return custom;
   const tags = word.topics
-    .flatMap(topic => topic.split(/\s*\/\s*|\s*,\s*/))
+    .flatMap(topic => topic.split(/\s*\/\s*|\s*,\s*|\s+&\s+|\s+and\s+/i))
     .map(tag => tag.trim())
     .filter(tag => tag && tag.toLowerCase() !== 'vocabulary');
   const type =

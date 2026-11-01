@@ -3,6 +3,15 @@ export interface Word {
   hu: string;
   en: string;
   es: string;
+  tags: string[];
+  eligible: boolean;
+}
+
+export interface LegacyWord {
+  id: string;
+  hu: string;
+  en: string;
+  es: string;
   topics: string[];
   sourceRows: number[];
   eligible: boolean;
@@ -43,8 +52,8 @@ export function parseCsv(csv: string, delimiter = ','): string[][] {
   return rows;
 }
 
-export function buildVocabulary(csv: string): Word[] {
-  const words = new Map<string, Word>();
+export function buildVocabulary(csv: string): LegacyWord[] {
+  const words = new Map<string, LegacyWord>();
   parseCsv(csv)
     .slice(1)
     .forEach((row, index) => {

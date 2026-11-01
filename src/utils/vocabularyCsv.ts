@@ -36,18 +36,14 @@ function decodeTags(value: string): string[] {
   return tags;
 }
 
-export function exportVocabularyCsv(
-  words: Word[],
-  tags: Record<string, string[]>,
-  progress: Record<string, Progress>,
-): string {
+export function exportVocabularyCsv(words: Word[], progress: Record<string, Progress>): string {
   const rows = words.map(word =>
     [
       word.id,
       word.hu,
       word.en,
       word.es,
-      encodeTags(getWordTags(word, tags[word.id])),
+      encodeTags(getWordTags(word)),
       String(Boolean(progress[word.id]?.removed)),
     ]
       .map(quote)

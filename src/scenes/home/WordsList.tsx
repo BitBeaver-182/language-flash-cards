@@ -11,8 +11,6 @@ import { estimateRecall } from '@/utils/recall';
 import { prepareDictionary } from '@/utils/dictionary';
 import { getWordTags } from '@/utils/tags';
 import { Word } from '@/utils/vocabulary';
-import catalog from '@/data/vocabulary.json';
-import { mergedVocabulary } from '@/utils/mergedVocabulary';
 
 const styles = StyleSheet.create({
   list: { paddingHorizontal: 22, paddingTop: 22, paddingBottom: 32, gap: 16 },
@@ -88,9 +86,7 @@ const styles = StyleSheet.create({
 export default function WordsList() {
   const dispatch = useDispatch();
   const { isDark } = useColorScheme();
-  const { progress, customTags, language, userWords } = useSelector(
-    (state: State) => state.learning,
-  );
+  const { progress, language, words: userWords } = useSelector((state: State) => state.learning);
   const es = language === 'es';
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -99,7 +95,7 @@ export default function WordsList() {
   const [removed, setRemoved] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
-  const words = useMemo(() => mergedVocabulary(catalog, userWords), [userWords]);
+  const words = useMemo(() => Object.values(userWords), [userWords]);
   const [now, setNow] = useState(() => new Date());
   const listRef = useRef<FlatList<Word>>(null);
   const [showTop, setShowTop] = useState(false);
@@ -109,18 +105,8 @@ export default function WordsList() {
   }, []);
   const visible = useMemo(
     () =>
-      prepareDictionary(
-        words,
-        progress,
-        customTags,
-        deferredQuery,
-        removed,
-        sortBy,
-        ascending,
-        now,
-        language,
-      ),
-    [words, progress, customTags, deferredQuery, removed, sortBy, ascending, now, language],
+      prepareDictionary(words, progress, deferredQuery, removed, sortBy, ascending, now, language),
+    [words, progress, deferredQuery, removed, sortBy, ascending, now, language],
   );
   const textStyle = [styles.text, isDark && { color: colors.white }];
   const mutedStyle = [styles.muted, isDark && { color: colors.darkMuted }];
@@ -200,8 +186,8 @@ export default function WordsList() {
             </View>
           </View>
           <View style={styles.tags} accessibilityLabel={es ? 'Etiquetas' : 'Tags'}>
-            {getWordTags(item, customTags[item.id]).length ? (
-              getWordTags(item, customTags[item.id]).map(tag => (
+            {getWordTags(item).length ? (
+              getWordTags(item).map(tag => (
                 <View
                   key={tag}
                   style={[styles.tag, isDark && { backgroundColor: colors.darkCanvas }]}>
@@ -249,7 +235,7 @@ export default function WordsList() {
                 accessibilityRole="button"
                 style={styles.action}
                 onPress={() => {
-                  setDraft(getWordTags(item, customTags[item.id]).join(', '));
+                  setDraft(getWordTags(item).join(', '));
                   setEditing(item.id);
                 }}>
                 <Ionicons
@@ -302,7 +288,7 @@ export default function WordsList() {
         </View>
       );
     },
-    [progress, now, isDark, es, customTags, editing, draft, removed, dispatch],
+    [progress, now, isDark, es, editing, draft, removed, dispatch],
   );
 
   return (

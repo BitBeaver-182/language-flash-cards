@@ -3,9 +3,6 @@ import { Progress, recordReview } from '@/utils/recall';
 import catalog from '@/data/vocabulary.json';
 import { Word } from '@/utils/vocabulary';
 import { CsvWord } from '@/utils/vocabularyCsv';
-import { consolidateDuplicates, mergedVocabulary } from '@/utils/mergedVocabulary';
-
-const baseById = new Map(catalog.map(word => [word.id, word]));
 
 export interface PracticeSession {
   id: string;
@@ -31,10 +28,8 @@ export interface LearningState {
   reminders: { count: number; quietStart: number; quietEnd: number };
   dailyGoal: number;
   remindersEnabled: boolean;
-  customTags: Record<string, string[]>;
-  userWords: Record<string, Word>;
+  words: Record<string, Word>;
   sessions: PracticeSession[];
-  duplicatesConsolidated?: boolean;
 }
 
 export const initialLearningState: LearningState = {
@@ -43,8 +38,7 @@ export const initialLearningState: LearningState = {
   reminders: { count: 0, quietStart: 1320, quietEnd: 480 },
   dailyGoal: 1,
   remindersEnabled: false,
-  customTags: {},
-  userWords: {},
+  words: Object.fromEntries(catalog.map(word => [word.id, word])),
   sessions: [],
 };
 
@@ -52,15 +46,7 @@ const slice = createSlice({
   name: 'learning',
   initialState: initialLearningState,
   reducers: {
-    hydrated: (_state, action: PayloadAction<LearningState>) => {
-      const data = action.payload;
-      if (data.duplicatesConsolidated) return data;
-      return {
-        ...data,
-        ...consolidateDuplicates(catalog, data.userWords, data.customTags, data.progress),
-        duplicatesConsolidated: true,
-      };
-    },
+    hydrated: (_state, action: PayloadAction<LearningState>) => action.payload,
     dailyGoalChanged: (state, action: PayloadAction<number>) => {
       state.dailyGoal = Math.max(1, Math.min(12, action.payload));
       if (state.remindersEnabled) state.reminders.count = state.dailyGoal;
@@ -70,21 +56,20 @@ const slice = createSlice({
       state.reminders.count = action.payload ? state.dailyGoal : 0;
     },
     tagsChanged: (state, action: PayloadAction<{ wordId: string; tags: string[] }>) => {
-      state.customTags[action.payload.wordId] = action.payload.tags;
+      const word = state.words[action.payload.wordId];
+      if (word) word.tags = action.payload.tags;
     },
     vocabularyImported: (state, action: PayloadAction<CsvWord[]>) => {
       for (const row of action.payload) {
-        const existing = state.userWords[row.id] ?? baseById.get(row.id);
-        state.userWords[row.id] = {
+        const existing = state.words[row.id];
+        state.words[row.id] = {
           id: row.id,
           hu: row.hu,
           en: row.en,
           es: row.es,
-          topics: existing?.topics ?? [],
-          sourceRows: existing?.sourceRows ?? [],
+          tags: row.tags,
           eligible: existing?.eligible ?? true,
         };
-        state.customTags[row.id] = row.tags;
         if (state.progress[row.id]) state.progress[row.id].removed = row.removed;
         else if (row.removed)
           state.progress[row.id] = {
@@ -112,7 +97,7 @@ const slice = createSlice({
     },
     wordRemovalChanged: (state, action: PayloadAction<{ wordId: string; removed: boolean }>) => {
       const { wordId, removed } = action.payload;
-      const allWords = mergedVocabulary(catalog, state.userWords);
+      const allWords = Object.values(state.words);
       const word = allWords.find(item => item.id === wordId);
       const ids = word
         ? allWords

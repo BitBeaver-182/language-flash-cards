@@ -11,7 +11,7 @@ export function selectWords(
   // Hungarian word cannot consume a new-word slot.
   const groups = new Map<string, Word[]>();
   for (const word of words) {
-    if (!word.eligible || progress[word.id]?.removed || (topic && !word.topics.includes(topic)))
+    if (!word.eligible || progress[word.id]?.removed || (topic && !word.tags.includes(topic)))
       continue;
     const key = word.hu.normalize('NFC').toLocaleLowerCase();
     groups.set(key, [...(groups.get(key) ?? []), word]);

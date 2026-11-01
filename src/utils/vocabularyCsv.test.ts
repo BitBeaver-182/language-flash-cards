@@ -8,25 +8,20 @@ it('round trips quoted words, tags and removal with stable IDs', () => {
       hu: 'kényelmes',
       en: 'comfortable, cosy',
       es: 'cómodo',
-      topics: ['Adjectives'],
-      sourceRows: [2],
+      tags: ['people', 'description'],
       eligible: true,
     },
   ];
-  const csv = exportVocabularyCsv(
-    words,
-    { 'stable-id': ['people', 'description'] },
-    {
-      'stable-id': {
-        wordId: 'stable-id',
-        removed: true,
-        strength: 0,
-        stabilityDays: 1,
-        reviewedAt: '',
-        reviews: 0,
-      },
+  const csv = exportVocabularyCsv(words, {
+    'stable-id': {
+      wordId: 'stable-id',
+      removed: true,
+      strength: 0,
+      stabilityDays: 1,
+      reviewedAt: '',
+      reviews: 0,
     },
-  );
+  });
   expect(importVocabularyCsv(csv)).toEqual([
     {
       id: 'stable-id',
@@ -49,9 +44,9 @@ it('rejects malformed CSV without returning partial changes', () => {
 
 it('preserves delimiters and backslashes inside tags', () => {
   const words: Word[] = [
-    { id: 'x', hu: 'ház', en: 'house', es: 'casa', topics: [], sourceRows: [], eligible: true },
+    { id: 'x', hu: 'ház', en: 'house', es: 'casa', tags: ['a|b', 'c\\d'], eligible: true },
   ];
-  const csv = exportVocabularyCsv(words, { x: ['a|b', 'c\\d'] }, {});
+  const csv = exportVocabularyCsv(words, {});
   expect(importVocabularyCsv(csv)[0].tags).toEqual(['a|b', 'c\\d']);
 });
 

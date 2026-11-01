@@ -11,10 +11,17 @@ appId: ${APP_ID}
 - tapOn:
     id: add-word-english
 - inputText: "carrot"
+- scrollUntilVisible:
+    element:
+      id: add-word-spanish
+    direction: DOWN
 - tapOn:
     id: add-word-spanish
 - inputText: "zanahoria"
-- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: save-word
+    direction: DOWN
 - tapOn:
     id: save-word
 - assertVisible: Review English meanings

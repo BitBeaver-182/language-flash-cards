@@ -6,8 +6,7 @@ const word = (id: string, en: string): Word => ({
   hu: id,
   en,
   es: en,
-  topics: [],
-  sourceRows: [],
+  tags: [],
   eligible: true,
 });
 

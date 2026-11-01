@@ -7,7 +7,6 @@ const cache = new WeakMap<
   Word,
   { hu: string; en: string; es: string; tags: string; tokens: { en: string[]; es: string[] } }
 >();
-const tagCache = new WeakMap<string[], { text: string; tokens: string[] }>();
 const tokenSeparator = /[^\p{L}\p{N}]+/u;
 
 function normalize(value: string): string {
@@ -61,20 +60,9 @@ function searchable(word: Word) {
   return entry;
 }
 
-function customTagIndex(tags: string[]) {
-  let entry = tagCache.get(tags);
-  if (!entry) {
-    const text = normalize(tags.join(' '));
-    entry = { text, tokens: text.split(tokenSeparator) };
-    tagCache.set(tags, entry);
-  }
-  return entry;
-}
-
 export function prepareDictionary(
   words: Word[],
   progress: Record<string, Progress>,
-  customTags: Record<string, string[]>,
   query: string,
   removed: boolean,
   sortBy: 'alphabet' | 'knowledge',
@@ -90,17 +78,10 @@ export function prepareDictionary(
         (!normalizedQuery ||
           (() => {
             const entry = searchable(word);
-            const custom = customTags[word.id] ? customTagIndex(customTags[word.id]) : null;
-            const text = `${entry.hu} ${entry[language]} ${custom ? custom.text : entry.tags}`;
+            const text = `${entry.hu} ${entry[language]} ${entry.tags}`;
             if (text.includes(normalizedQuery)) return true;
             const queryTokens = normalizedQuery.split(/\s+/);
-            const tokens = custom
-              ? [
-                  ...entry.hu.split(tokenSeparator),
-                  ...entry[language].split(tokenSeparator),
-                  ...custom.tokens,
-                ]
-              : entry.tokens[language];
+            const tokens = entry.tokens[language];
             return queryTokens.every(term =>
               tokens.some(
                 token => token.includes(term) || (term.length >= 4 && withinOneEdit(term, token)),
@@ -116,9 +97,7 @@ export function prepareDictionary(
           ? 0
           : searchable(word).hu.includes(normalizedQuery)
             ? 1
-            : `${searchable(word)[language]} ${customTags[word.id] ? customTagIndex(customTags[word.id]).text : searchable(word).tags}`.includes(
-                  normalizedQuery,
-                )
+            : `${searchable(word)[language]} ${searchable(word).tags}`.includes(normalizedQuery)
               ? 2
               : 3,
     }));

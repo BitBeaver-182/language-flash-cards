@@ -1,3 +1,5 @@
-# Run the vocabulary app flow; the other files document the original template.
+# Run the vocabulary app flows; the other files document the original template.
 flows:
   - recall.yaml
+  - merge-word.yaml
+  - tag-practice.yaml

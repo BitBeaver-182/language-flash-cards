@@ -28,8 +28,8 @@ it('imports edits by stable ID without losing existing review progress', () => {
     ]),
   );
   expect(state.progress['custom-1'].reviews).toBe(1);
-  expect(state.userWords['custom-1'].hu).toBe('alma');
-  expect(state.customTags['custom-1']).toEqual(['fruit']);
+  expect(state.words['custom-1'].hu).toBe('alma');
+  expect(state.words['custom-1'].tags).toEqual(['fruit']);
 });
 
 it('keeps removal and language without claiming unreviewed words are known', () => {
@@ -88,9 +88,9 @@ it('stores completed sessions and a separate daily goal without losing old setti
   expect(state.reminders.count).toBe(3);
 });
 
-it('removes every catalog entry for the same Hungarian word', () => {
+it('removes and restores the consolidated vocabulary entry', () => {
   const variants = catalog.filter(word => word.hu.toLocaleLowerCase() === 'kedves');
-  expect(variants.length).toBeGreaterThan(1);
+  expect(variants).toHaveLength(1);
   const removed = reducer(undefined, wordRemovalChanged({ wordId: variants[0].id, removed: true }));
   expect(variants.every(word => removed.progress[word.id]?.removed)).toBe(true);
   const restored = reducer(removed, wordRemovalChanged({ wordId: variants[0].id, removed: false }));

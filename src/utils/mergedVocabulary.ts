@@ -1,6 +1,6 @@
-import { Word } from './vocabulary';
+import { LegacyWord as Word } from './vocabulary';
 import { Progress } from './recall';
-import { getWordTags } from './tags';
+import { getLegacyWordTags } from './tags';
 
 export function findDuplicateWords(words: Word[]): Word[][] {
   const groups = new Map<string, Word[]>();
@@ -51,7 +51,9 @@ export function consolidateDuplicates(
       sourceRows: Array.from(new Set(group.flatMap(word => word.sourceRows))),
       eligible: group.some(word => word.eligible),
     };
-    customTags[canonical.id] = unique(group.flatMap(word => getWordTags(word, tags[word.id])));
+    customTags[canonical.id] = unique(
+      group.flatMap(word => getLegacyWordTags(word, tags[word.id])),
+    );
     const reviews = group
       .map(word => progress[word.id])
       .filter(Boolean)

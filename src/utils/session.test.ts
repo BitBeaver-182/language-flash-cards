@@ -6,8 +6,7 @@ const words: Word[] = ['a', 'b', 'c'].map(id => ({
   hu: id,
   en: id,
   es: id,
-  topics: ['people'],
-  sourceRows: [1],
+  tags: ['people'],
   eligible: true,
 }));
 
@@ -88,7 +87,7 @@ it('applies the mix within the chosen topic and fills empty review slots with ne
     ...words[0],
     id: String(i),
     hu: String(i),
-    topics: [i < 15 ? 'people' : 'food'],
+    tags: [i < 15 ? 'people' : 'food'],
   }));
   const now = new Date('2026-01-08T12:00:00Z');
   const progress = Object.fromEntries(
@@ -106,7 +105,7 @@ it('applies the mix within the chosen topic and fills empty review slots with ne
   );
   const selected = selectWords(many, progress, now, 'people');
   expect(selected).toHaveLength(10);
-  expect(selected.every(word => word.topics.includes('people'))).toBe(true);
+  expect(selected.every(word => word.tags.includes('people'))).toBe(true);
   expect(selected.filter(word => progress[word.id])).toHaveLength(2);
 });
 
