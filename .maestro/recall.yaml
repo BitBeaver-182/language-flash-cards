@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+---
+- runFlow: subflows/launch.yaml
+- tapOn:
+    id: start-practice
+- tapOn:
+    id: begin-session
+- tapOn: Show answer
+- tapOn: I remembered
+- tapOn:
+    id: remove-word
+- tapOn: Remove word
+- tapOn: Home
+- tapOn: My words
+- tapOn: Show removed
+- assertVisible: Restore
+- tapOn: Restore
+- assertNotVisible: Restore

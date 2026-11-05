@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: Backup and restore controls are available
+---
+- runFlow: subflows/launch.yaml
+- tapOn:
+    id: nav-settings
+- scrollUntilVisible:
+    element:
+      id: export-backup
+    direction: DOWN
+- assertVisible: Backup & Data Safety
+- assertVisible:
+    id: export-backup
+- assertVisible:
+    id: restore-backup

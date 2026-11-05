@@ -1,0 +1,13 @@
+appId: ${APP_ID}
+---
+- runFlow: subflows/launch.yaml
+- tapOn:
+    id: start-practice
+- assertVisible: Choose a tag
+- tapOn:
+    id: search-tags
+- inputText: Vegetables
+- tapOn: Vegetables
+- tapOn:
+    id: begin-session
+- assertVisible: Show answer

@@ -4,6 +4,7 @@ import { Provider as ReduxProvider } from 'react-redux';
 import useColorScheme from '@/hooks/useColorScheme';
 import store from '@/utils/store';
 import 'react-native-reanimated';
+import '@/i18n';
 
 export default function Provider({ children }: Readonly<{ children: React.ReactNode }>) {
   const { isDark } = useColorScheme();

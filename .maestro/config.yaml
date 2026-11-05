@@ -1,3 +1,6 @@
-# Runs every flow in .maestro/ (subflows/ holds shared steps and is not run directly)
+# Run the vocabulary app flows; the other files document the original template.
 flows:
-  - '*'
+  - recall.yaml
+  - merge-word.yaml
+  - tag-practice.yaml
+  - backup.yaml
