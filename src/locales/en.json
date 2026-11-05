@@ -62,7 +62,8 @@
     "rememberedSelf": "Remembered (self-assessed)",
     "forgotSelf": "Forgot (self-assessed)",
     "correctLabel": "Correct",
-    "needsReview": "Needs review"
+    "needsReview": "Needs review",
+    "recentAccuracy": "recent accuracy"
   },
   "settings": {
     "title": "Settings",

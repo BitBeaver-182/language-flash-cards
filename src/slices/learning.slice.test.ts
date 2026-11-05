@@ -98,3 +98,21 @@ it('removes and restores the consolidated vocabulary entry', () => {
   const restored = reducer(removed, wordRemovalChanged({ wordId: variants[0].id, removed: false }));
   expect(variants.every(word => !restored.progress[word.id]?.removed)).toBe(true);
 });
+
+it('tracks only the most recent twenty answered questions across words', () => {
+  let state = reducer(undefined, { type: '@@init' });
+  for (let i = 0; i < 25; i++) {
+    state = reducer(
+      state,
+      reviewRecorded({
+        wordId: `word-${i}`,
+        result: i % 2 ? 'correct' : 'incorrect',
+        mode: 'recall',
+        at: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+      }),
+    );
+  }
+  expect(state.answerHistory).toHaveLength(20);
+  expect(state.answerHistory?.[0].wordId).toBe('word-5');
+  expect(state.answerHistory?.[19].wordId).toBe('word-24');
+});

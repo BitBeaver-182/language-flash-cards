@@ -62,7 +62,8 @@
     "rememberedSelf": "Lo recordé (autoevaluación)",
     "forgotSelf": "No lo recordé (autoevaluación)",
     "correctLabel": "Correcta",
-    "needsReview": "Para repasar"
+    "needsReview": "Para repasar",
+    "recentAccuracy": "aciertos recientes"
   },
   "settings": {
     "title": "Ajustes",

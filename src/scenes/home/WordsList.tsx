@@ -9,7 +9,7 @@ import { State } from '@/utils/store';
 import { tagsChanged, wordRemovalChanged } from '@/slices/learning.slice';
 import { colors } from '@/theme';
 import { prepareDictionary } from '@/utils/dictionary';
-import { estimateRecall } from '@/utils/recall';
+import { recentAccuracy } from '@/utils/recall';
 import { getWordTags } from '@/utils/tags';
 import { Word, getWordMeaning } from '@/utils/vocabulary';
 
@@ -123,7 +123,8 @@ export default function WordsList() {
 
   const renderItem = useCallback(
     ({ item }: { item: Word }) => {
-      const value = estimateRecall(progress[item.id], now);
+      const accuracy = recentAccuracy(progress[item.id]);
+      const value = accuracy?.percent ?? null;
       const circumference = 2 * Math.PI * 23;
       const rowMutedStyle = [styles.muted, isDark && { color: colors.darkMuted }];
 
@@ -157,7 +158,7 @@ export default function WordsList() {
               accessibilityLabel={
                 value === null
                   ? t('practice.notAssessed')
-                  : `${value}% ${t('practice.estimatedRecall')}`
+                  : `${value}% ${t('practice.recentAccuracy')} ${accuracy?.correct}/${accuracy?.total}`
               }>
               <Svg width={54} height={54} viewBox="0 0 54 54">
                 <Circle
@@ -184,7 +185,7 @@ export default function WordsList() {
                 )}
               </Svg>
               <Text style={[styles.badgeText, isDark && { color: colors.white }]}>
-                {value === null ? '—' : `${value}%`}
+                {value === null ? '—' : `${value}%\n${accuracy?.correct}/${accuracy?.total}`}
               </Text>
             </View>
           </View>
@@ -283,7 +284,7 @@ export default function WordsList() {
         </View>
       );
     },
-    [progress, now, isDark, language, editing, draft, removed, dispatch, t],
+    [progress, isDark, language, editing, draft, removed, dispatch, t],
   );
 
   return (

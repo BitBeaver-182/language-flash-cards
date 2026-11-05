@@ -62,7 +62,8 @@
     "rememberedSelf": "Pamätal som si (sebahodnotenie)",
     "forgotSelf": "Zabudol som (sebahodnotenie)",
     "correctLabel": "Správne",
-    "needsReview": "Na opakovanie"
+    "needsReview": "Na opakovanie",
+    "recentAccuracy": "nedávna úspešnosť"
   },
   "settings": {
     "title": "Nastavenia",

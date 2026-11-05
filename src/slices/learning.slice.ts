@@ -24,8 +24,15 @@ export interface SessionAnswer {
 
 export const LEARNING_STATE_VERSION = 3;
 
+export interface PerformanceAnswer {
+  wordId: string;
+  correct: boolean;
+  at: string;
+}
+
 export interface LearningState {
   progress: Record<string, Progress>;
+  answerHistory?: PerformanceAnswer[];
   language: string;
   reminders: { count: number; quietStart: number; quietEnd: number };
   dailyGoal: number;
@@ -36,6 +43,7 @@ export interface LearningState {
 
 export const initialLearningState: LearningState = {
   progress: {},
+  answerHistory: [],
   language: 'en',
   reminders: { count: 0, quietStart: 1320, quietEnd: 480 },
   dailyGoal: 1,
@@ -133,6 +141,10 @@ const slice = createSlice({
       }>,
     ) => {
       const { wordId, result, mode, at } = action.payload;
+      state.answerHistory = [
+        ...(state.answerHistory ?? []),
+        { wordId, correct: result === 'correct', at },
+      ].slice(-20);
       state.progress[wordId] = recordReview(
         state.progress[wordId],
         wordId,

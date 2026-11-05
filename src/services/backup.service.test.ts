@@ -159,3 +159,35 @@ describe('backup.service', () => {
     }
   });
 });
+
+it('preserves graduation milestones and twenty-answer histories in a backup', () => {
+  const state: LearningState = {
+    ...initialLearningState,
+    progress: {
+      a: {
+        wordId: 'a',
+        strength: 0.8,
+        stabilityDays: 4,
+        reviewedAt: '2026-11-03T10:00:00Z',
+        reviews: 20,
+        removed: false,
+        recent: Array.from({ length: 20 }, (_, i) => i < 16),
+        graduated: true,
+        introducedAt: '2026-11-01T10:00:00Z',
+        spacedSuccesses: [
+          { at: '2026-11-01T10:00:00Z', recall: true },
+          { at: '2026-11-02T10:00:00Z', recall: false },
+          { at: '2026-11-03T10:00:00Z', recall: true },
+        ],
+      },
+    },
+    answerHistory: Array.from({ length: 20 }, (_, i) => ({
+      wordId: 'a',
+      correct: i < 16,
+      at: '2026-11-03T10:00:00Z',
+    })),
+  };
+  const restored = parseBackupPackage(createBackupPackage(state));
+  expect(restored.progress.a).toEqual(state.progress.a);
+  expect(restored.answerHistory).toEqual(state.answerHistory);
+});

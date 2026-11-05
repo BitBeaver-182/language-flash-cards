@@ -80,6 +80,13 @@ function isProgress(value: unknown): boolean {
     typeof value.reviews === 'number' &&
     Number.isFinite(value.reviews) &&
     (value.removed === undefined || typeof value.removed === 'boolean') &&
+    (value.graduated === undefined || typeof value.graduated === 'boolean') &&
+    (value.introducedAt === undefined || typeof value.introducedAt === 'string') &&
+    (value.spacedSuccesses === undefined ||
+      (Array.isArray(value.spacedSuccesses) &&
+        value.spacedSuccesses.every(
+          item => isRecord(item) && typeof item.at === 'string' && typeof item.recall === 'boolean',
+        ))) &&
     (value.recent === undefined ||
       (Array.isArray(value.recent) && value.recent.every(item => typeof item === 'boolean')))
   );
@@ -181,13 +188,31 @@ export function parseBackupPackage(jsonString: string): LearningState {
       id,
       {
         ...entry,
-        recent: Array.isArray(entry.recent) ? entry.recent.slice(-10) : [],
+        recent: Array.isArray(entry.recent) ? entry.recent.slice(-20) : [],
       },
     ]),
   );
 
   return {
     progress,
+    answerHistory: (Array.isArray(data.answerHistory)
+      ? data.answerHistory.filter(
+          (entry): entry is { wordId: string; correct: boolean; at: string } =>
+            isRecord(entry) &&
+            typeof entry.wordId === 'string' &&
+            typeof entry.correct === 'boolean' &&
+            typeof entry.at === 'string',
+        )
+      : [...(data.sessions as LearningState['sessions'])]
+          .sort((a, b) => Date.parse(a.completedAt) - Date.parse(b.completedAt))
+          .flatMap(session =>
+            (session.answers ?? []).map(answer => ({
+              wordId: answer.wordId,
+              correct: answer.correct,
+              at: session.completedAt,
+            })),
+          )
+    ).slice(-20),
     language:
       typeof data.language === 'string' && supportedLanguages.has(data.language)
         ? data.language

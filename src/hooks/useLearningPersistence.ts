@@ -88,7 +88,7 @@ export function useLearningPersistence(): boolean {
               id,
               {
                 ...entry,
-                recent: Array.isArray(entry.recent) ? entry.recent.slice(-10).map(Boolean) : [],
+                recent: Array.isArray(entry.recent) ? entry.recent.slice(-20).map(Boolean) : [],
               },
             ]),
           );
@@ -97,6 +97,18 @@ export function useLearningPersistence(): boolean {
               ...initialLearningState,
               ...settings,
               words: normalizedWords,
+              answerHistory: (
+                saved.data.answerHistory ??
+                [...(saved.data.sessions ?? [])]
+                  .sort((a, b) => Date.parse(a.completedAt) - Date.parse(b.completedAt))
+                  .flatMap(session =>
+                    (session.answers ?? []).map(answer => ({
+                      wordId: migrated?.idMap[answer.wordId] ?? answer.wordId,
+                      correct: answer.correct,
+                      at: session.completedAt,
+                    })),
+                  )
+              ).slice(-20),
               progress: normalizedProgress,
               sessions: (saved.data.sessions ?? []).map(session => ({
                 ...session,

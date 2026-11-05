@@ -31,7 +31,7 @@ import {
 } from '@/slices/learning.slice';
 import { syncRemindersAsync } from '@/services/reminders.service';
 import { State } from '@/utils/store';
-import { estimateRecall } from '@/utils/recall';
+import { recentAccuracy } from '@/utils/recall';
 import {
   countActiveWords,
   MAX_ACTIVE_WORDS,
@@ -216,6 +216,7 @@ export default function Home() {
     reminders,
     remindersEnabled,
     sessions,
+    answerHistory,
     dailyGoal,
     words: userWords,
   } = useSelector((state: State) => state.learning);
@@ -234,6 +235,7 @@ export default function Home() {
   const [today, setToday] = useState(() => new Date());
   const lastNotification = useRef('');
   const [sessionStartProgress, setSessionStartProgress] = useState(progress);
+  const [sessionStartHistory, setSessionStartHistory] = useState(answerHistory ?? []);
   const [sessionStats, setSessionStats] = useState<{
     id: string;
     correct: number;
@@ -292,7 +294,10 @@ export default function Home() {
       ) {
         lastNotification.current = key;
         setSessionStartProgress(progress);
-        setQueue(selectWords(words, progress, new Date()));
+        setSessionStartHistory(answerHistory ?? []);
+        setQueue(
+          selectWords(words, progress, new Date(), undefined, { history: answerHistory ?? [] }),
+        );
         setSessionStats({
           id: createSessionId(),
           correct: 0,
@@ -311,7 +316,7 @@ export default function Home() {
       if (response) openNotification(response);
     });
     return () => subscription.remove();
-  }, [progress, words]);
+  }, [progress, words, answerHistory]);
 
   function button(label: string, onPress: () => void, testID?: string, selected?: boolean) {
     return (
@@ -328,7 +333,12 @@ export default function Home() {
   }
   function start() {
     setSessionStartProgress(progress);
-    setQueue(selectWords(words, progress, new Date(), topic || undefined));
+    setSessionStartHistory(answerHistory ?? []);
+    setQueue(
+      selectWords(words, progress, new Date(), topic || undefined, {
+        history: answerHistory ?? [],
+      }),
+    );
     setSessionStats({ id: createSessionId(), correct: 0, total: 0, topic, answers: [] });
     setIndex(0);
     setRevealed(false);
@@ -669,9 +679,9 @@ export default function Home() {
                     </>
                   )}
                   <Text style={textStyle}>
-                    {estimateRecall(progress[word.id], new Date()) === null
+                    {recentAccuracy(progress[word.id]) === null
                       ? t('practice.notAssessed')
-                      : `${estimateRecall(progress[word.id], new Date())}% ${t('practice.estimatedRecall')}`}
+                      : `${recentAccuracy(progress[word.id])!.percent}% ${t('practice.recentAccuracy')} · ${recentAccuracy(progress[word.id])!.correct}/${recentAccuracy(progress[word.id])!.total}`}
                   </Text>
                 </View>
                 {choices.length > 0 ? (
@@ -741,6 +751,7 @@ export default function Home() {
                         word,
                         new Date(),
                         sessionStats.topic || undefined,
+                        sessionStartHistory,
                       );
                       if (replacement) nextQueue.splice(index, 0, replacement);
                       setQueue(nextQueue);
