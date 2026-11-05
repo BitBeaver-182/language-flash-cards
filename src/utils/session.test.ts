@@ -102,7 +102,7 @@ it('allows one new word when thirty-five are active', () => {
 it('shrinks the session instead of padding it with new words', () => {
   const many = freshWords(50);
   const progress = Object.fromEntries(many.slice(0, 3).map(word => [word.id, reviewed(word.id)]));
-  expect(selectWords(many, progress, now)).toHaveLength(6);
+  expect(selectWords(many, progress, now)).toHaveLength(10);
 });
 
 it('keeps learned words in review and frees their active slot', () => {
@@ -171,10 +171,10 @@ it('applies the cap within the chosen topic', () => {
     [0, 1, 15, 16, 17, 18].map(i => [String(i), reviewed(String(i))]),
   );
   const selected = selectWords(many, progress, now, 'people');
-  expect(selected).toHaveLength(5);
+  expect(selected).toHaveLength(6);
   expect(selected.every(word => word.tags.includes('people'))).toBe(true);
   expect(selected.filter(word => progress[word.id])).toHaveLength(2);
-  expect(selected.filter(word => !progress[word.id])).toHaveLength(3);
+  expect(selected.filter(word => !progress[word.id])).toHaveLength(4);
 });
 
 it('fills remaining slots with reviews when few unseen words remain', () => {
@@ -183,4 +183,34 @@ it('fills remaining slots with reviews when few unseen words remain', () => {
   const selected = selectWords(many, progress, now);
   expect(selected).toHaveLength(10);
   expect(selected.filter(word => !progress[word.id])).toHaveLength(1);
+});
+
+it('introduces ten distinct words on a fresh start and excludes ignored words', () => {
+  const many = freshWords(20);
+  const progress = { '0': { ...reviewed('0', []), removed: true } };
+  const selected = selectWords(many, progress, now);
+  expect(selected).toHaveLength(10);
+  expect(selected.some(word => word.id === '0')).toBe(false);
+});
+
+it('finishes the initial ten across sessions, then limits new words to three', () => {
+  const many = freshWords(30);
+  const nine = Object.fromEntries(many.slice(0, 9).map(word => [word.id, reviewed(word.id)]));
+  expect(selectWords(many, nine, now).filter(word => !nine[word.id])).toHaveLength(1);
+  const ten: Record<string, ReturnType<typeof reviewed>> = { ...nine, '9': reviewed('9') };
+  expect(selectWords(many, ten, now).filter(word => !ten[word.id])).toHaveLength(3);
+  ten['0'] = { ...ten['0'], removed: true };
+  expect(selectWords(many, ten, now).filter(word => !ten[word.id])).toHaveLength(3);
+});
+
+it('counts previously answered duplicate forms only once across topics', () => {
+  const many = freshWords(20);
+  const duplicate = { ...many[0], id: 'other', tags: ['other'] };
+  const progress: Record<string, ReturnType<typeof reviewed>> = {
+    '0': reviewed('0'),
+    other: reviewed('other'),
+  };
+  expect(
+    selectWords([...many, duplicate], progress, now).filter(word => !progress[word.id]),
+  ).toHaveLength(9);
 });

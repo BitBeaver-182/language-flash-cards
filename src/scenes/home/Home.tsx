@@ -722,14 +722,13 @@ export default function Home() {
                       dispatch(wordRemovalChanged({ wordId: word.id, removed: true }));
                       const nextQueue = queue.filter(
                         (item, itemIndex) =>
-                          itemIndex <= index ||
+                          itemIndex < index ||
                           item.hu.toLocaleLowerCase() !== word.hu.toLocaleLowerCase(),
                       );
                       setQueue(nextQueue);
                       setRevealed(false);
                       setChoiceResult(null);
-                      if (index + 1 >= nextQueue.length) finishSession();
-                      setIndex(index + 1);
+                      if (index >= nextQueue.length) finishSession();
                     })
                   }>
                   <Text style={[styles.dangerText, isDark && { color: colors.darkDanger }]}>

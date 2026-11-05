@@ -59,10 +59,21 @@ export function selectWords(
     (a, b) => Number(a.recent) - Number(b.recent) || a.recall - b.recall || a.random - b.random,
   );
 
+  // The initial learning allowance is based on words actually answered, across
+  // all topics. Removed-but-never-answered words do not consume it. A word
+  // answered before removal still counts as practiced, so removing it cannot
+  // reopen the initial allowance after the learner reaches ten.
+  const practicedForms = new Set(
+    words
+      .filter(word => (progress[word.id]?.reviews ?? 0) > 0)
+      .map(word => word.hu.normalize('NFC').toLocaleLowerCase()),
+  );
+  const initialRemaining = Math.max(0, SESSION_SIZE - practicedForms.size);
+  const sessionNewLimit = initialRemaining > 0 ? initialRemaining : MAX_NEW_PER_SESSION;
   const activeCount = countActiveWords(words, progress);
   const newCount = Math.min(
     fresh.length,
-    MAX_NEW_PER_SESSION,
+    sessionNewLimit,
     Math.max(0, MAX_ACTIVE_WORDS - activeCount),
   );
   const reviewCount = Math.min(reviews.length, SESSION_SIZE - newCount);
