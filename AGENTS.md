@@ -91,24 +91,23 @@ The commands below use `dev`. Replace it with `stg` or `prod` for the other envi
 ## Git
 
 - Run only requested Git operations.
-- Never commit directly to `dev`, `stg`, or `main`.
+- Never commit directly to `main`.
 - Keep each branch and commit focused.
 - Submit changes through a PR. Use `manage-prs`.
 
 ### Branches
 
-Use `dev` for development, `stg` for staging, and `main` for production. `dev` is the default branch.
+Base every branch on `main`. It is the default and the only long-lived branch.
 
-| Change            | Branch            | Start from | Merge into                   |
-| ----------------- | ----------------- | ---------- | ---------------------------- |
-| Feature           | `feat/<name>`     | `dev`      | `dev`                        |
-| Fix               | `fix/<name>`      | `dev`      | `dev`                        |
-| Refactor          | `refactor/<name>` | `dev`      | `dev`                        |
-| Dependencies, SDK | `chore/<name>`    | `dev`      | `dev`                        |
-| Docs              | `docs/<name>`     | `dev`      | `dev`                        |
-| Staging           | `dev`             | —          | `stg`                        |
-| Release           | `stg`             | —          | `main`                       |
-| Production fix    | `hotfix/<name>`   | `main`     | `main`, then `stg` and `dev` |
+| Change            | Branch            | Start from | Merge into |
+| ----------------- | ----------------- | ---------- | ---------- |
+| Feature           | `feat/<name>`     | `main`     | `main`     |
+| Fix               | `fix/<name>`      | `main`     | `main`     |
+| Refactor          | `refactor/<name>` | `main`     | `main`     |
+| Dependencies, SDK | `chore/<name>`    | `main`     | `main`     |
+| Docs              | `docs/<name>`     | `main`     | `main`     |
+| Release           | `release/<name>`  | `main`     | `main`     |
+| Production fix    | `hotfix/<name>`   | `main`     | `main`     |
 
 ### Commits
 
@@ -120,9 +119,7 @@ Use `type(scope): description`.
 
 ### Merge and Version
 
-- Squash merge work branches into `dev`.
-- Promote with merge commits: open a PR from `dev` to `stg`, test the staging build, then open a PR from `stg` to `main`.
-- After a hotfix reaches `main`, merge `main` back into `stg` and `dev` with merge commits.
-- Bump `version` in `package.json` on `dev` before promoting a release.
+- Squash merge work branches into `main`.
+- Bump `version` in `package.json` on a `release/<name>` branch, then merge it into `main`.
 - Tag releases as `vMAJOR.MINOR.PATCH` on `main`. Use `manage-prs` to publish them.
 - Increment major for Expo SDK upgrades and breaking changes, minor for features, and patch for fixes.

@@ -4,7 +4,7 @@ Open a PR for the current branch that meets PR Rules in [SKILL.md](SKILL.md#pr-r
 
 ## Inspect
 
-- Select the base from the [branch table](../../../AGENTS.md#branches). Reject `dev`, `stg`, and `main` as source branches. Use [promote.md](promote.md) for those.
+- Select the base from the [branch table](../../../AGENTS.md#branches). Reject `main` as a source branch.
 - Ask how to handle a dirty working tree. Never include or discard it without authorization.
 - Check whether the branch is pushed and whether a PR already exists.
 
@@ -25,7 +25,7 @@ gh pr list --head <branch> --state open
 
 1. Push the branch if needed.
 2. Create the PR from a body file, without waiting for approval. A PR can be edited after it is open.
-3. Report the PR URL, the title, and the body. For a hotfix, note the merge back into `stg` and `dev`.
+3. Report the PR URL, the title, and the body.
 
 ```bash
 git push -u origin <branch>

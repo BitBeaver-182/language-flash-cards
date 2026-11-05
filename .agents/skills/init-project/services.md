@@ -22,8 +22,7 @@ npx eas project:info
 
 ## Branches
 
-- Check that `dev`, `stg`, and `main` exist on the remote. Ask before creating missing ones.
-- Ask the user to set `dev` as the default branch in GitHub settings.
+- Check that `main` exists on the remote and is the default branch. Ask before creating it.
 
 ## CI
 
