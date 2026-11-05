@@ -36,7 +36,7 @@ export class BackupError extends Error {
 const errorMessages: Record<BackupErrorCode, string> = {
   invalidJson: 'Invalid JSON format',
   invalidFile: 'Invalid backup file',
-  wrongApp: 'Not a Magyar Recall backup',
+  wrongApp: 'Not a Beszélj! backup',
   unsupportedVersion: 'Unsupported backup version',
   incompleteData: 'Incomplete or incompatible backup data',
   sharingUnavailable: 'Sharing is not available on this device.',
@@ -206,7 +206,7 @@ export function parseBackupPackage(jsonString: string): LearningState {
 
 export async function exportBackupFileAsync(
   state: LearningState,
-  dialogTitle = 'Export Magyar Recall Backup',
+  dialogTitle = 'Export Beszélj! Backup',
 ): Promise<void> {
   if (!(await Sharing.isAvailableAsync())) {
     fail('sharingUnavailable');

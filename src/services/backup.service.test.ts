@@ -107,9 +107,7 @@ describe('backup.service', () => {
   it('rejects a backup from another app or an unknown future version', () => {
     const otherApp = JSON.parse(createBackupPackage(sampleState)) as BackupEnvelope;
     otherApp.app = 'another-app';
-    expect(() => parseBackupPackage(JSON.stringify(otherApp))).toThrow(
-      'Not a Magyar Recall backup',
-    );
+    expect(() => parseBackupPackage(JSON.stringify(otherApp))).toThrow('Not a Beszélj! backup');
     const future = JSON.parse(createBackupPackage(sampleState)) as BackupEnvelope;
     future.version = 99;
     expect(() => parseBackupPackage(JSON.stringify(future))).toThrow('Unsupported backup version');

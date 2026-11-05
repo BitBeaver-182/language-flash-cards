@@ -127,7 +127,7 @@
     "confirmRestoreMessage": "Toto nahradí vašu aktuálnu slovnú zásobu a pokrok údajmi zo záložného súboru.",
     "restoreSuccess": "Záloha bola úspešne obnovená.",
     "restoreFailed": "Zálohu sa nepodarilo obnoviť. Skontrolujte súbor.",
-    "shareTitle": "Exportovať zálohu Magyar Recall",
+    "shareTitle": "Exportovať zálohu Beszélj!",
     "errors": {
       "invalidJson": "Tento súbor nie je platný JSON.",
       "invalidFile": "Tento súbor nie je záloha.",

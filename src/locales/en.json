@@ -127,7 +127,7 @@
     "confirmRestoreMessage": "This will replace your current vocabulary and progress with the data in the backup file.",
     "restoreSuccess": "Backup restored successfully.",
     "restoreFailed": "Could not restore backup. Please verify the file.",
-    "shareTitle": "Export Magyar Recall Backup",
+    "shareTitle": "Export Beszélj! Backup",
     "errors": {
       "invalidJson": "This file is not valid JSON.",
       "invalidFile": "This file is not a backup file.",
