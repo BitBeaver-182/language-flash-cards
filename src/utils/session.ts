@@ -42,6 +42,7 @@ interface SelectionOptions {
   excludedForms?: Set<string>;
   maxNew?: number;
   reservedActiveSlots?: number;
+  rng?: () => number;
 }
 
 export function selectWords(
@@ -54,9 +55,10 @@ export function selectWords(
   // Group related dictionary entries so another translation of a reviewed
   // Hungarian word cannot consume a new-word slot.
   const groups = groupWords(words, progress, topic);
+  const rng = options.rng ?? Math.random;
 
   const fresh: { word: Word; random: number }[] = [];
-  const reviews: { word: Word; recall: number; recent: boolean; random: number }[] = [];
+  const reviews: { word: Word; priority: number }[] = [];
   for (const group of groups.values()) {
     if (options.excludedForms?.has(formOf(group[0]))) continue;
     const reviewed = group
@@ -66,16 +68,25 @@ export function selectWords(
     if (reviewed.length) {
       const { word, recall } = reviewed[0];
       const elapsed = now.getTime() - Date.parse(progress[word.id].reviewedAt);
-      reviews.push({ word, recall, recent: elapsed < 6 * 3600000, random: Math.random() });
+      const history = progress[word.id].recent.slice(-10);
+      // An empty migrated history is unknown, not ten wrong answers.
+      const accuracy = history.length ? history.filter(Boolean).length / history.length : 0.5;
+      // Every reviewed word retains a nonzero chance. Poor recent results have
+      // up to 10x the weight of a perfect record; fading recall and very recent
+      // practice continue to influence the draw without making it deterministic.
+      const historyWeight = 1 + 9 * (1 - accuracy);
+      const recallWeight = 1 + (100 - recall) / 100;
+      const recencyWeight = elapsed < 6 * 3600000 ? 0.25 : 1;
+      const weight = historyWeight * recallWeight * recencyWeight;
+      const sample = Math.max(Number.EPSILON, Math.min(1 - Number.EPSILON, rng()));
+      reviews.push({ word, priority: -Math.log(sample) / weight });
     } else {
-      fresh.push({ word: group[0], random: Math.random() });
+      fresh.push({ word: group[0], random: rng() });
     }
   }
 
   if (groups.size > SESSION_SIZE) fresh.sort((a, b) => a.random - b.random);
-  reviews.sort(
-    (a, b) => Number(a.recent) - Number(b.recent) || a.recall - b.recall || a.random - b.random,
-  );
+  reviews.sort((a, b) => a.priority - b.priority);
 
   const activeCount = countActiveWords(words, progress);
   const newCount = Math.min(

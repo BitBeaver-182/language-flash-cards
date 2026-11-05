@@ -79,7 +79,7 @@ it('introduces at most three unseen words per session', () => {
       .slice(0, 10)
       .map(word => [word.id, { ...reviewed(word.id), strength: word.id === '0' ? 0.1 : 0.6 }]),
   );
-  const selected = selectWords(many, progress, now);
+  const selected = selectWords(many, progress, now, undefined, { rng: () => 0.5 });
   expect(MAX_NEW_PER_SESSION).toBe(3);
   expect(selected.filter(word => !progress[word.id])).toHaveLength(3);
   expect(selected.filter(word => progress[word.id])).toHaveLength(7);
@@ -226,8 +226,10 @@ it('replaces a removed word with the weakest eligible review without repeating t
   const progress = Object.fromEntries(many.slice(0, 12).map(word => [word.id, reviewed(word.id)]));
   progress['10'] = { ...progress['10'], strength: 0.1 };
   const queue = [...many.slice(0, 9), many[12]];
+  const random = jest.spyOn(Math, 'random').mockReturnValue(0.5);
   const replacement = selectReplacement(many, progress, progress, queue, many[9], now);
   expect(replacement?.id).toBe('10');
+  random.mockRestore();
 });
 
 it('uses the freed new-word slot but does not exceed three new words after bootstrap', () => {
@@ -282,4 +284,37 @@ it('replaces ignored new words during the initial ten without consuming an extra
   expect(replacement).toBeDefined();
   expect(many.slice(1, 10)).not.toContain(replacement);
   expect(replacement?.id).not.toBe('0');
+});
+
+it('selects lower last-ten accuracy more often while retaining a chance for perfect words', () => {
+  const pool = freshWords(20);
+  const progress = Object.fromEntries(
+    pool.map((word, i) => [word.id, reviewed(word.id, Array(10).fill(i >= 10))]),
+  );
+  let seed = 1234567;
+  const rng = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  let weak = 0;
+  let strong = 0;
+  for (let i = 0; i < 1000; i++) {
+    for (const word of selectWords(pool, progress, now, undefined, { rng })) {
+      if (Number(word.id) < 10) weak++;
+      else strong++;
+    }
+  }
+  expect(weak).toBeGreaterThan(strong * 2);
+  expect(strong).toBeGreaterThan(0);
+});
+
+it('uses partial history proportionally and treats missing history as unknown', () => {
+  const pool = freshWords(3);
+  const progress = {
+    '0': reviewed('0', [false]),
+    '1': reviewed('1', [true]),
+    '2': { ...reviewed('2', []), reviews: 1 },
+  };
+  const chosen = selectWords(pool, progress, now, undefined, { rng: () => 0.5 });
+  expect(chosen.map(word => word.id)).toEqual(['0', '2', '1']);
 });
