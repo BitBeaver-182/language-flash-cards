@@ -159,5 +159,26 @@
     "tags": "Tags",
     "noTags": "No tags",
     "empty": "No words found."
+  },
+  "voice": {
+    "title": "Hungarian voice",
+    "play": "Play {{word}} in Hungarian",
+    "playSlow": "Play {{word}} slowly",
+    "missing": "An offline Hungarian voice is not installed. Connect to the internet to download voice data, then return here.",
+    "openSetup": "Open voice setup",
+    "ready": "Hungarian offline voice is ready. Tap the speaker to listen.",
+    "notReady": "The offline Hungarian voice is not ready yet. You can check again in Settings.",
+    "unavailable": "A Hungarian offline voice is unavailable on this device. You can continue practicing without audio.",
+    "setupUnavailable": "Voice setup could not be opened. Search for text-to-speech in your phone settings and install Hungarian voice data.",
+    "playbackError": "Could not play the Hungarian voice. Check the voice settings and try again.",
+    "test": "Test voice",
+    "recheck": "Check again",
+    "status": {
+      "checking": "Checking the Hungarian voice…",
+      "ready": "Hungarian offline voice is ready.",
+      "missing": "An offline Hungarian voice is not installed.",
+      "unavailable": "Offline voice is unavailable on this device."
+    },
+    "testComplete": "Voice test finished."
   }
 }

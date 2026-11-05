@@ -12,6 +12,7 @@ import { prepareDictionary } from '@/utils/dictionary';
 import { recentAccuracy } from '@/utils/recall';
 import { getWordTags } from '@/utils/tags';
 import { Word, getWordMeaning } from '@/utils/vocabulary';
+import { PronunciationButton } from '@/components/elements/PronunciationButton';
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -48,7 +49,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   info: { flex: 1, gap: 4 },
-  word: { fontSize: 19, fontWeight: '700', color: colors.ink },
+  word: { fontSize: 19, fontWeight: '700', color: colors.ink, flexShrink: 1 },
+  wordWithVoice: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
   translation: { fontSize: 15, color: colors.mutedInk },
   badge: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' },
   badgeText: { position: 'absolute', fontSize: 10, color: colors.ink, fontWeight: '700' },
@@ -147,7 +149,10 @@ export default function WordsList() {
         <View style={[styles.wordRow, isDark && { backgroundColor: colors.darkSurface }]}>
           <View style={styles.wordHeader}>
             <View style={styles.info}>
-              <Text style={[styles.word, isDark && { color: colors.white }]}>{item.hu}</Text>
+              <View style={styles.wordWithVoice}>
+                <Text style={[styles.word, isDark && { color: colors.white }]}>{item.hu}</Text>
+                <PronunciationButton text={item.hu} />
+              </View>
               <Text style={[styles.translation, isDark && { color: colors.darkMuted }]}>
                 {getWordMeaning(item, language)}
               </Text>

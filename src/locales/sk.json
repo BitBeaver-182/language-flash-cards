@@ -159,5 +159,26 @@
     "tags": "Štítky",
     "noTags": "Žiadne štítky",
     "empty": "Nenašli sa žiadne slová."
+  },
+  "voice": {
+    "title": "Maďarský hlas",
+    "play": "Prehrať {{word}} po maďarsky",
+    "playSlow": "Prehrať {{word}} pomaly",
+    "missing": "Offline maďarský hlas nie je nainštalovaný. Pripojte sa na internet, stiahnite hlasové údaje a potom sa vráťte.",
+    "openSetup": "Otvoriť nastavenia hlasu",
+    "ready": "Offline maďarský hlas je pripravený. Stlačte reproduktor.",
+    "notReady": "Offline maďarský hlas ešte nie je pripravený. Skontrolujte ho znova v Nastaveniach.",
+    "unavailable": "Offline maďarský hlas nie je na tomto zariadení dostupný. Môžete pokračovať bez zvuku.",
+    "setupUnavailable": "Nastavenia hlasu sa nepodarilo otvoriť. V nastaveniach telefónu vyhľadajte prevod textu na reč a nainštalujte maďarský hlas.",
+    "playbackError": "Maďarský hlas sa nepodarilo prehrať. Skontrolujte nastavenia a skúste to znova.",
+    "test": "Vyskúšať hlas",
+    "recheck": "Skontrolovať znova",
+    "status": {
+      "checking": "Kontroluje sa maďarský hlas…",
+      "ready": "Offline maďarský hlas je pripravený.",
+      "missing": "Offline maďarský hlas nie je nainštalovaný.",
+      "unavailable": "Offline hlas nie je na tomto zariadení dostupný."
+    },
+    "testComplete": "Skúška hlasu sa skončila."
   }
 }

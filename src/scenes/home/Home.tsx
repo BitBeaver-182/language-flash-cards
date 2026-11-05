@@ -47,6 +47,8 @@ import { SUPPORTED_LANGUAGES } from '@/i18n';
 import { sentences } from '@/data/sentences';
 import WordsList from './WordsList';
 import VocabularyManagement from './VocabularyManagement';
+import { PronunciationButton } from '@/components/elements/PronunciationButton';
+import { VoiceSettings } from '@/components/elements/VoiceSettings';
 
 function createSessionId() {
   return `${Date.now()}-${Math.random()}`;
@@ -80,6 +82,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   word: { fontSize: 32, fontWeight: '700', color: colors.ink },
+  wordWithVoice: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
+  wordInRow: { flexShrink: 1 },
   button: {
     backgroundColor: colors.teal,
     borderRadius: 12,
@@ -666,9 +670,17 @@ export default function Home() {
                     </>
                   ) : (
                     <>
-                      <Text style={[styles.word, isDark && { color: colors.white }]}>
-                        {word.hu}
-                      </Text>
+                      <View style={styles.wordWithVoice}>
+                        <Text
+                          style={[
+                            styles.word,
+                            styles.wordInRow,
+                            isDark && { color: colors.white },
+                          ]}>
+                          {word.hu}
+                        </Text>
+                        <PronunciationButton text={word.hu} />
+                      </View>
                       {visuals[word.hu.toLocaleLowerCase()] ? (
                         <Text
                           style={styles.word}
@@ -717,14 +729,20 @@ export default function Home() {
                   )
                 ) : revealed ? (
                   <>
-                    {(sentence ? [word.hu] : getWordMeaning(word, language).split('\n')).map(
-                      meaning => (
-                        <Text key={meaning} style={textStyle}>
-                          {getWordMeaning(word, language).includes('\n') && !sentence ? '• ' : ''}
-                          {meaning}
-                        </Text>
-                      ),
+                    {sentence && (
+                      <View style={styles.wordWithVoice}>
+                        <Text style={[textStyle, styles.wordInRow]}>{word.hu}</Text>
+                        <PronunciationButton
+                          text={`${sentence.before}${word.hu}${sentence.after}`}
+                        />
+                      </View>
                     )}
+                    {(!sentence ? getWordMeaning(word, language).split('\n') : []).map(meaning => (
+                      <Text key={meaning} style={textStyle}>
+                        {getWordMeaning(word, language).includes('\n') && !sentence ? '• ' : ''}
+                        {meaning}
+                      </Text>
+                    ))}
                     {button(t('practice.iRemembered'), () => answer(true))}
                     {button(t('practice.iForgot'), () => answer(false))}
                   </>
@@ -849,6 +867,7 @@ export default function Home() {
                       ? t('settings.windowTooShort')
                       : ''}
               </Text>
+              <VoiceSettings />
               <VocabularyManagement />
             </>
           )}

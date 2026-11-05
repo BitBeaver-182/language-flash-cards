@@ -159,5 +159,26 @@
     "tags": "Etiquetas",
     "noTags": "Sin etiquetas",
     "empty": "No se encontraron palabras."
+  },
+  "voice": {
+    "title": "Voz húngara",
+    "play": "Escuchar {{word}} en húngaro",
+    "playSlow": "Escuchar {{word}} lentamente",
+    "missing": "No hay una voz húngara sin conexión instalada. Conéctate a internet para descargarla y vuelve aquí.",
+    "openSetup": "Abrir ajustes de voz",
+    "ready": "La voz húngara sin conexión está lista. Pulsa el altavoz para escuchar.",
+    "notReady": "La voz húngara sin conexión aún no está lista. Puedes comprobarlo de nuevo en Ajustes.",
+    "unavailable": "La voz húngara sin conexión no está disponible en este dispositivo. Puedes seguir practicando sin audio.",
+    "setupUnavailable": "No se pudieron abrir los ajustes de voz. Busca texto a voz en los ajustes del teléfono e instala la voz húngara.",
+    "playbackError": "No se pudo reproducir la voz húngara. Comprueba los ajustes de voz y vuelve a intentarlo.",
+    "test": "Probar voz",
+    "recheck": "Comprobar de nuevo",
+    "status": {
+      "checking": "Comprobando la voz húngara…",
+      "ready": "La voz húngara sin conexión está lista.",
+      "missing": "No hay una voz húngara sin conexión instalada.",
+      "unavailable": "La voz sin conexión no está disponible en este dispositivo."
+    },
+    "testComplete": "Prueba de voz finalizada."
   }
 }
