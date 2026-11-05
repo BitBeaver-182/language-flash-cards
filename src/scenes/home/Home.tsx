@@ -260,8 +260,8 @@ export default function Home() {
       : undefined;
   const choices = useMemo(() => {
     if (!word || index % 3 !== 1) return [];
-    return makeChoices(word, words, language);
-  }, [word, index, language, words]);
+    return makeChoices(word, words, language, { progress });
+  }, [word, index, language, words, progress]);
   useEffect(() => {
     if (language) void i18n.changeLanguage(language);
   }, [language, i18n]);

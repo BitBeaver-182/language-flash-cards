@@ -1,4 +1,5 @@
 import { Word, getWordMeaning } from './vocabulary';
+import { Progress } from './recall';
 
 const GENERIC_TAGS = new Set([
   'word',
@@ -13,8 +14,53 @@ const GENERIC_TAGS = new Set([
   'vocabulary examples',
   'practice sentence',
   'reading text',
+  'pronunciation',
   'other',
 ]);
+
+// Some source records carry lesson-wide tags but omit their actual category.
+// These nationality words are present in the supplied vocabulary; derive the
+// category without changing the learner's stored or custom tags.
+const NATIONALITIES = new Set([
+  'amerikai',
+  'angol',
+  'argentin',
+  'belga',
+  'cseh',
+  'dán',
+  'finn',
+  'francia',
+  'görög',
+  'holland',
+  'horvát',
+  'japán',
+  'kanadai',
+  'kínai',
+  'lengyel',
+  'magyar',
+  'német',
+  'olasz',
+  'orosz',
+  'osztrák',
+  'portugál',
+  'spanyol',
+  'svéd',
+  'szerb',
+  'szlovák',
+  'török',
+]);
+
+function specificTags(word: Word): Set<string> {
+  const tags = new Set(
+    (word.tags || [])
+      .map(tag => tag.trim().normalize('NFC').toLocaleLowerCase())
+      .filter(tag => tag && !GENERIC_TAGS.has(tag)),
+  );
+  if (NATIONALITIES.has(word.hu.trim().normalize('NFC').toLocaleLowerCase())) {
+    tags.add('nationalities');
+  }
+  return tags;
+}
 
 export function capitalizeOption(text: string): string {
   const trimmed = text.trim();
@@ -36,6 +82,7 @@ function shuffleArray<T>(items: T[], rng: () => number): T[] {
 export interface MakeChoicesOptions {
   rng?: () => number;
   shuffle?: boolean;
+  progress?: Record<string, Progress>;
 }
 
 export function makeChoices(
@@ -56,56 +103,62 @@ export function makeChoices(
   const targetAnswer = capitalizeOption(meanings[0]);
   if (!targetAnswer || /[/;,]/.test(targetAnswer)) return [];
 
-  const targetSpecificTags = (target.tags || [])
-    .map(tag => tag.trim())
-    .filter(tag => tag && !GENERIC_TAGS.has(tag.toLowerCase()));
-
-  const seenLower = new Set<string>([targetAnswer.toLowerCase()]);
-  for (const meaning of meanings) {
-    seenLower.add(meaning.toLowerCase());
+  const targetTags = specificTags(target);
+  const tagFrequency = new Map<string, number>();
+  for (const word of words) {
+    if (!word.eligible || options.progress?.[word.id]?.removed) continue;
+    for (const tag of specificTags(word)) {
+      tagFrequency.set(tag, (tagFrequency.get(tag) ?? 0) + 1);
+    }
   }
 
+  const validTargetMeanings = new Set(meanings.map(meaning => meaning.toLocaleLowerCase()));
   interface Candidate {
     option: string;
-    sharedCount: number;
+    // The rarest shared tag represents the most specific matching category.
+    categorySize: number;
+    practiced: boolean;
   }
 
   const relatedPool: Candidate[] = [];
   const generalPool: Candidate[] = [];
 
   for (const word of words) {
-    if (!word.eligible || word.hu.toLowerCase() === target.hu.toLowerCase()) continue;
-    const raw = getWordMeaning(word, language).split('\n')[0].trim();
+    if (
+      !word.eligible ||
+      options.progress?.[word.id]?.removed ||
+      word.hu.trim().normalize('NFC').toLocaleLowerCase() ===
+        target.hu.trim().normalize('NFC').toLocaleLowerCase()
+    )
+      continue;
+    const wordMeanings = getWordMeaning(word, language)
+      .split('\n')
+      .map(meaning => meaning.trim())
+      .filter(Boolean);
+    const raw = wordMeanings[0];
     if (!raw || /[/;,]/.test(raw)) continue;
+    if (wordMeanings.some(meaning => validTargetMeanings.has(meaning.toLocaleLowerCase())))
+      continue;
 
-    const option = capitalizeOption(raw);
-    const lower = option.toLowerCase();
-    if (seenLower.has(lower)) continue;
-
-    const wordSpecificTags = (word.tags || [])
-      .map(tag => tag.trim())
-      .filter(tag => tag && !GENERIC_TAGS.has(tag.toLowerCase()));
-
-    let sharedCount = 0;
-    if (targetSpecificTags.length > 0) {
-      for (const tag of wordSpecificTags) {
-        if (targetSpecificTags.some(targetTag => targetTag.toLowerCase() === tag.toLowerCase())) {
-          sharedCount++;
-        }
-      }
-    }
-
-    if (sharedCount > 0) {
-      relatedPool.push({ option, sharedCount });
-    } else {
-      generalPool.push({ option, sharedCount: 0 });
-    }
+    const shared = [...specificTags(word)].filter(tag => targetTags.has(tag));
+    const candidate = {
+      option: capitalizeOption(raw),
+      categorySize: shared.includes('nationalities')
+        ? -1
+        : shared.length
+          ? Math.min(...shared.map(tag => tagFrequency.get(tag) ?? words.length))
+          : Infinity,
+      practiced: (options.progress?.[word.id]?.reviews ?? 0) > 0,
+    };
+    (shared.length ? relatedPool : generalPool).push(candidate);
   }
 
+  // Shuffle before stable sorting, so alternatives of equal relevance vary.
   const shuffledRelated = shouldShuffle ? shuffleArray(relatedPool, rng) : relatedPool;
-  shuffledRelated.sort((a, b) => b.sharedCount - a.sharedCount);
-
+  shuffledRelated.sort((a, b) => a.categorySize - b.categorySize);
   const shuffledGeneral = shouldShuffle ? shuffleArray(generalPool, rng) : generalPool;
+  // Category always wins; familiarity matters when we have to fall back.
+  shuffledGeneral.sort((a, b) => Number(b.practiced) - Number(a.practiced));
 
   const pickedDistractors: string[] = [];
   const pickedOptions = new Set<string>([targetAnswer.toLowerCase()]);
