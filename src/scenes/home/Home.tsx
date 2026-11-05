@@ -31,8 +31,13 @@ import {
 } from '@/slices/learning.slice';
 import { syncRemindersAsync } from '@/services/reminders.service';
 import { State } from '@/utils/store';
-import { estimateRecall } from '@/utils/recall';
-import { countActiveWords, MAX_ACTIVE_WORDS, selectWords } from '@/utils/session';
+import { recentAccuracy } from '@/utils/recall';
+import {
+  countActiveWords,
+  MAX_ACTIVE_WORDS,
+  selectReplacement,
+  selectWords,
+} from '@/utils/session';
 import { makeChoices } from '@/utils/choices';
 import { getReminderMinutes } from '@/utils/reminderSchedule';
 import { getWeekProgress, summarizeSessions } from '@/utils/sessionHistory';
@@ -211,6 +216,7 @@ export default function Home() {
     reminders,
     remindersEnabled,
     sessions,
+    answerHistory,
     dailyGoal,
     words: userWords,
   } = useSelector((state: State) => state.learning);
@@ -228,6 +234,8 @@ export default function Home() {
   const [status, setStatus] = useState('');
   const [today, setToday] = useState(() => new Date());
   const lastNotification = useRef('');
+  const [sessionStartProgress, setSessionStartProgress] = useState(progress);
+  const [sessionStartHistory, setSessionStartHistory] = useState(answerHistory ?? []);
   const [sessionStats, setSessionStats] = useState<{
     id: string;
     correct: number;
@@ -254,8 +262,8 @@ export default function Home() {
       : undefined;
   const choices = useMemo(() => {
     if (!word || index % 3 !== 1) return [];
-    return makeChoices(word, words, language);
-  }, [word, index, language, words]);
+    return makeChoices(word, words, language, { progress });
+  }, [word, index, language, words, progress]);
   useEffect(() => {
     if (language) void i18n.changeLanguage(language);
   }, [language, i18n]);
@@ -285,7 +293,11 @@ export default function Home() {
         lastNotification.current !== key
       ) {
         lastNotification.current = key;
-        setQueue(selectWords(words, progress, new Date()));
+        setSessionStartProgress(progress);
+        setSessionStartHistory(answerHistory ?? []);
+        setQueue(
+          selectWords(words, progress, new Date(), undefined, { history: answerHistory ?? [] }),
+        );
         setSessionStats({
           id: createSessionId(),
           correct: 0,
@@ -304,7 +316,7 @@ export default function Home() {
       if (response) openNotification(response);
     });
     return () => subscription.remove();
-  }, [progress, words]);
+  }, [progress, words, answerHistory]);
 
   function button(label: string, onPress: () => void, testID?: string, selected?: boolean) {
     return (
@@ -320,7 +332,13 @@ export default function Home() {
     );
   }
   function start() {
-    setQueue(selectWords(words, progress, new Date(), topic || undefined));
+    setSessionStartProgress(progress);
+    setSessionStartHistory(answerHistory ?? []);
+    setQueue(
+      selectWords(words, progress, new Date(), topic || undefined, {
+        history: answerHistory ?? [],
+      }),
+    );
     setSessionStats({ id: createSessionId(), correct: 0, total: 0, topic, answers: [] });
     setIndex(0);
     setRevealed(false);
@@ -661,9 +679,9 @@ export default function Home() {
                     </>
                   )}
                   <Text style={textStyle}>
-                    {estimateRecall(progress[word.id], new Date()) === null
+                    {recentAccuracy(progress[word.id]) === null
                       ? t('practice.notAssessed')
-                      : `${estimateRecall(progress[word.id], new Date())}% ${t('practice.estimatedRecall')}`}
+                      : `${recentAccuracy(progress[word.id])!.percent}% ${t('practice.recentAccuracy')} · ${recentAccuracy(progress[word.id])!.correct}/${recentAccuracy(progress[word.id])!.total}`}
                   </Text>
                 </View>
                 {choices.length > 0 ? (
@@ -722,14 +740,24 @@ export default function Home() {
                       dispatch(wordRemovalChanged({ wordId: word.id, removed: true }));
                       const nextQueue = queue.filter(
                         (item, itemIndex) =>
-                          itemIndex <= index ||
+                          itemIndex < index ||
                           item.hu.toLocaleLowerCase() !== word.hu.toLocaleLowerCase(),
                       );
+                      const replacement = selectReplacement(
+                        words,
+                        progress,
+                        sessionStartProgress,
+                        nextQueue,
+                        word,
+                        new Date(),
+                        sessionStats.topic || undefined,
+                        sessionStartHistory,
+                      );
+                      if (replacement) nextQueue.splice(index, 0, replacement);
                       setQueue(nextQueue);
                       setRevealed(false);
                       setChoiceResult(null);
-                      if (index + 1 >= nextQueue.length) finishSession();
-                      setIndex(index + 1);
+                      if (index >= nextQueue.length) finishSession();
                     })
                   }>
                   <Text style={[styles.dangerText, isDark && { color: colors.darkDanger }]}>

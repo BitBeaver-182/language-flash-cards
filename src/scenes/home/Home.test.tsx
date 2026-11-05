@@ -463,3 +463,22 @@ it('presents multiple choice for recognition cards with capitalized options', as
   expect(screen.getByText('Nice!')).toBeTruthy();
   await userEvent.press(screen.getByText('Continue'));
 });
+
+it('replaces a removed word without counting it as practiced', async () => {
+  jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+    buttons?.find(button => button.style === 'destructive')?.onPress?.();
+  });
+  const select = jest.spyOn(sessionUtils, 'selectWords');
+  await render(
+    <Provider store={store}>
+      <Home />
+    </Provider>,
+  );
+  await userEvent.press(screen.getByText('Start practice'));
+  await userEvent.press(screen.getByText('Begin session'));
+  expect(screen.getByText(/1 \/ 10/)).toBeTruthy();
+  await userEvent.press(screen.getByTestId('remove-word'));
+  expect(screen.getByText(/1 \/ 10/)).toBeTruthy();
+  expect(select).toHaveBeenCalledTimes(1);
+  expect(store.getState().learning.sessions).toHaveLength(0);
+});

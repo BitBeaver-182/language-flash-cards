@@ -115,7 +115,7 @@ it('normalizes old composite labels into separate stored tags', async () => {
   expect(store.getState().learning.words.w.tags).toEqual(['Adverbs', 'Places']);
 });
 
-it('keeps only the latest ten saved attempts when hydrating', async () => {
+it('keeps up to the latest twenty saved attempts when hydrating', async () => {
   const set = jest.fn().mockResolvedValue(true);
   const word = Object.values(initialLearningState.words)[0];
   const recent = Array.from({ length: 12 }, (_, index) => index % 2 === 0);
@@ -145,5 +145,5 @@ it('keeps only the latest ten saved attempts when hydrating', async () => {
   );
   const { result } = await renderHook(() => useLearningPersistence(), { wrapper });
   await waitFor(() => expect(result.current).toBe(true));
-  expect(store.getState().learning.progress[word.id].recent).toEqual(recent.slice(-10));
+  expect(store.getState().learning.progress[word.id].recent).toEqual(recent.slice(-20));
 });

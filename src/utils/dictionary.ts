@@ -1,4 +1,4 @@
-import { estimateRecall, Progress } from './recall';
+import { recentAccuracy, Progress } from './recall';
 import { getWordTags } from './tags';
 import { Word, getWordMeaning } from './vocabulary';
 
@@ -113,7 +113,7 @@ export function prepareDictionary(
     )
     .map(word => ({
       word,
-      score: sortBy === 'knowledge' ? estimateRecall(progress[word.id], now) : null,
+      score: sortBy === 'knowledge' ? (recentAccuracy(progress[word.id])?.percent ?? null) : null,
       rank:
         !normalizedQuery || searchable(word, language).hu === normalizedQuery
           ? 0

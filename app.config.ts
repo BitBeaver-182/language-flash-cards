@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const expoConfig: ExpoConfig = {
     ...config,
     slug: process.env.EXPO_SLUG ?? 'magyar-recall',
-    name: process.env.EXPO_NAME ?? 'Magyar Recall',
+    name: process.env.EXPO_NAME ?? 'Beszélj!',
     scheme: 'magyar-recall',
     owner: undefined,
     ios: {
@@ -26,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.web,
       bundler: 'metro',
       output: 'static',
-      favicon: './src/assets/images/logo-sm.png',
+      favicon: './src/assets/images/beszelj-icon.png',
     },
     updates: {
       enabled: false,
@@ -55,7 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           dark: {
             backgroundColor: '#101212',
           },
-          image: './src/assets/images/logo-lg.png',
+          image: './src/assets/images/beszelj-splash.png',
           imageWidth: 200,
           resizeMode: 'contain',
         },

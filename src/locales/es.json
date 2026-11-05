@@ -62,7 +62,8 @@
     "rememberedSelf": "Lo recordé (autoevaluación)",
     "forgotSelf": "No lo recordé (autoevaluación)",
     "correctLabel": "Correcta",
-    "needsReview": "Para repasar"
+    "needsReview": "Para repasar",
+    "recentAccuracy": "aciertos recientes"
   },
   "settings": {
     "title": "Ajustes",
@@ -127,7 +128,7 @@
     "confirmRestoreMessage": "Esto reemplazará tu vocabulario actual y tu progreso con los datos del archivo de copia.",
     "restoreSuccess": "Copia de seguridad restaurada con éxito.",
     "restoreFailed": "No se pudo restaurar la copia. Por favor verifica el archivo.",
-    "shareTitle": "Exportar copia de Magyar Recall",
+    "shareTitle": "Exportar copia de Beszélj!",
     "errors": {
       "invalidJson": "Este archivo no es JSON válido.",
       "invalidFile": "Este archivo no es una copia de seguridad.",

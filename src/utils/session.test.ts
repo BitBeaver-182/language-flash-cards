@@ -1,5 +1,13 @@
-import { countActiveWords, MAX_ACTIVE_WORDS, MAX_NEW_PER_SESSION, selectWords } from './session';
+import {
+  countActiveWords,
+  MAX_ACTIVE_WORDS,
+  MAX_NEW_PER_SESSION,
+  selectReplacement,
+  selectWords,
+  sessionNewLimit,
+} from './session';
 import { Word } from './vocabulary';
+import type { Progress } from './recall';
 
 const now = new Date('2026-01-08T00:00:00Z');
 
@@ -66,15 +74,20 @@ it('counts duplicate Hungarian forms as one active word', () => {
   expect(countActiveWords(duplicates, { one: reviewed('one') })).toBe(1);
 });
 
-it('introduces at most three unseen words per session', () => {
+it('uses three unseen words for a 70–84% performance sample', () => {
   const many = freshWords(25);
   const progress = Object.fromEntries(
     many
       .slice(0, 10)
       .map(word => [word.id, { ...reviewed(word.id), strength: word.id === '0' ? 0.1 : 0.6 }]),
   );
-  const selected = selectWords(many, progress, now);
-  expect(MAX_NEW_PER_SESSION).toBe(3);
+  const history = Array.from({ length: 10 }, (_, i) => ({
+    wordId: String(i),
+    correct: i < 8,
+    at: now.toISOString(),
+  }));
+  const selected = selectWords(many, progress, now, undefined, { rng: () => 0.5, history });
+  expect(MAX_NEW_PER_SESSION).toBe(5);
   expect(selected.filter(word => !progress[word.id])).toHaveLength(3);
   expect(selected.filter(word => progress[word.id])).toHaveLength(7);
   expect(selected).toHaveLength(10);
@@ -102,7 +115,7 @@ it('allows one new word when thirty-five are active', () => {
 it('shrinks the session instead of padding it with new words', () => {
   const many = freshWords(50);
   const progress = Object.fromEntries(many.slice(0, 3).map(word => [word.id, reviewed(word.id)]));
-  expect(selectWords(many, progress, now)).toHaveLength(6);
+  expect(selectWords(many, progress, now)).toHaveLength(10);
 });
 
 it('keeps learned words in review and frees their active slot', () => {
@@ -171,10 +184,10 @@ it('applies the cap within the chosen topic', () => {
     [0, 1, 15, 16, 17, 18].map(i => [String(i), reviewed(String(i))]),
   );
   const selected = selectWords(many, progress, now, 'people');
-  expect(selected).toHaveLength(5);
+  expect(selected).toHaveLength(6);
   expect(selected.every(word => word.tags.includes('people'))).toBe(true);
   expect(selected.filter(word => progress[word.id])).toHaveLength(2);
-  expect(selected.filter(word => !progress[word.id])).toHaveLength(3);
+  expect(selected.filter(word => !progress[word.id])).toHaveLength(4);
 });
 
 it('fills remaining slots with reviews when few unseen words remain', () => {
@@ -183,4 +196,219 @@ it('fills remaining slots with reviews when few unseen words remain', () => {
   const selected = selectWords(many, progress, now);
   expect(selected).toHaveLength(10);
   expect(selected.filter(word => !progress[word.id])).toHaveLength(1);
+});
+
+it('introduces ten distinct words on a fresh start and excludes ignored words', () => {
+  const many = freshWords(20);
+  const progress = { '0': { ...reviewed('0', []), removed: true } };
+  const selected = selectWords(many, progress, now);
+  expect(selected).toHaveLength(10);
+  expect(selected.some(word => word.id === '0')).toBe(false);
+});
+
+it('finishes the initial ten across sessions, then applies the cautious limit', () => {
+  const many = freshWords(30);
+  const nine = Object.fromEntries(many.slice(0, 9).map(word => [word.id, reviewed(word.id)]));
+  expect(selectWords(many, nine, now).filter(word => !nine[word.id])).toHaveLength(1);
+  const ten: Record<string, ReturnType<typeof reviewed>> = { ...nine, '9': reviewed('9') };
+  expect(selectWords(many, ten, now).filter(word => !ten[word.id])).toHaveLength(2);
+  ten['0'] = { ...ten['0'], removed: true };
+  expect(selectWords(many, ten, now).filter(word => !ten[word.id])).toHaveLength(2);
+});
+
+it('counts previously answered duplicate forms only once across topics', () => {
+  const many = freshWords(20);
+  const duplicate = { ...many[0], id: 'other', tags: ['other'] };
+  const progress: Record<string, ReturnType<typeof reviewed>> = {
+    '0': reviewed('0'),
+    other: reviewed('other'),
+  };
+  expect(
+    selectWords([...many, duplicate], progress, now).filter(word => !progress[word.id]),
+  ).toHaveLength(9);
+});
+
+it('replaces a removed word with the weakest eligible review without repeating the queue', () => {
+  const many = freshWords(20);
+  const progress = Object.fromEntries(many.slice(0, 12).map(word => [word.id, reviewed(word.id)]));
+  progress['10'] = { ...progress['10'], strength: 0.1 };
+  const queue = [...many.slice(0, 9), many[12]];
+  const random = jest.spyOn(Math, 'random').mockReturnValue(0.5);
+  const replacement = selectReplacement(many, progress, progress, queue, many[9], now);
+  expect(replacement?.id).toBe('10');
+  random.mockRestore();
+});
+
+it('respects the cautious new-word limit when replacing after bootstrap', () => {
+  const many = freshWords(30);
+  const progress = Object.fromEntries(many.slice(0, 10).map(word => [word.id, reviewed(word.id)]));
+  const queue = [...many.slice(0, 7), many[10], many[11]];
+  const replacement = selectReplacement(many, progress, progress, queue, many[12], now);
+  expect(replacement).toBeDefined();
+  // Remaining reviews take priority, so no extra unseen word is needed.
+  expect(progress[replacement!.id]).toBeDefined();
+  const allReviewsQueued = [...many.slice(0, 10), many[10]];
+  const freshReplacement = selectReplacement(
+    many,
+    progress,
+    progress,
+    allReviewsQueued,
+    many[12],
+    now,
+  );
+  expect(freshReplacement).toBeDefined();
+  expect(progress[freshReplacement!.id]).toBeUndefined();
+  const threeQueued = [...allReviewsQueued, freshReplacement!];
+  expect(selectReplacement(many, progress, progress, threeQueued, many[13], now)).toBeUndefined();
+});
+
+it('does not reuse a duplicate form, a removed word, or a word outside the topic', () => {
+  const many = freshWords(12).map((word, i) => ({ ...word, tags: [i < 10 ? 'a' : 'b'] }));
+  const duplicate = { ...many[0], id: 'duplicate' };
+  const progress = Object.fromEntries(many.map(word => [word.id, reviewed(word.id)]));
+  const queue = many.slice(0, 9);
+  expect(
+    selectReplacement([...many, duplicate], progress, progress, queue, many[9], now, 'a'),
+  ).toBeUndefined();
+});
+
+it('reserves active slots for queued new words and frees a removed active slot', () => {
+  const many = freshWords(45);
+  const progress = Object.fromEntries(many.slice(0, 35).map(word => [word.id, reviewed(word.id)]));
+  // One unreviewed word already reserves the final active slot; no other new word fits.
+  const allReviews = [...many.slice(0, 35), many[35]];
+  expect(selectReplacement(many, progress, progress, allReviews, many[36], now)).toBeUndefined();
+  const removedActive = many[0];
+  const queue = [...many.slice(1, 35), many[35]];
+  const replacement = selectReplacement(many, progress, progress, queue, removedActive, now);
+  expect(replacement).toBeDefined();
+  expect(progress[replacement!.id]).toBeUndefined();
+});
+
+it('replaces ignored new words during the initial ten without consuming an extra place', () => {
+  const many = freshWords(12);
+  const replacement = selectReplacement(many, {}, {}, many.slice(1, 10), many[0], now);
+  expect(replacement).toBeDefined();
+  expect(many.slice(1, 10)).not.toContain(replacement);
+  expect(replacement?.id).not.toBe('0');
+});
+
+it('selects lower last-ten accuracy more often while retaining a chance for perfect words', () => {
+  const pool = freshWords(20);
+  const progress = Object.fromEntries(
+    pool.map((word, i) => [word.id, reviewed(word.id, Array(10).fill(i >= 10))]),
+  );
+  let seed = 1234567;
+  const rng = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  let weak = 0;
+  let strong = 0;
+  for (let i = 0; i < 1000; i++) {
+    for (const word of selectWords(pool, progress, now, undefined, { rng })) {
+      if (Number(word.id) < 10) weak++;
+      else strong++;
+    }
+  }
+  expect(weak).toBeGreaterThan(strong * 2);
+  expect(strong).toBeGreaterThan(0);
+});
+
+it('uses partial history proportionally and treats missing history as unknown', () => {
+  const pool = freshWords(3);
+  const progress = {
+    '0': reviewed('0', [false]),
+    '1': reviewed('1', [true]),
+    '2': { ...reviewed('2', []), reviews: 1 },
+  };
+  const chosen = selectWords(pool, progress, now, undefined, { rng: () => 0.5 });
+  expect(chosen.map(word => word.id)).toEqual(['0', '2', '1']);
+});
+
+it('adapts introductions to recent overall performance and the rolling daily limit', () => {
+  const many = freshWords(40);
+  const progress: Record<string, Progress> = Object.fromEntries(
+    many.slice(0, 10).map(word => [word.id, reviewed(word.id)]),
+  );
+  const history = (correct: number) =>
+    Array.from({ length: 20 }, (_, i) => ({
+      wordId: String(i),
+      correct: i < correct,
+      at: now.toISOString(),
+    }));
+  expect(sessionNewLimit(many, progress, [], now)).toBe(2);
+  expect(sessionNewLimit(many, progress, history(13), now)).toBe(1);
+  expect(sessionNewLimit(many, progress, history(15), now)).toBe(3);
+  expect(sessionNewLimit(many, progress, history(18), now)).toBe(5);
+  for (const word of many.slice(0, 8))
+    progress[word.id] = { ...progress[word.id], introducedAt: now.toISOString() };
+  expect(sessionNewLimit(many, progress, history(18), now)).toBe(2);
+  progress[many[8].id] = { ...progress[many[8].id], introducedAt: now.toISOString() };
+  expect(sessionNewLimit(many, progress, history(18), now)).toBe(1);
+  progress[many[9].id] = { ...progress[many[9].id], introducedAt: now.toISOString() };
+  expect(sessionNewLimit(many, progress, history(18), now)).toBe(5); // All ten are the initial batch.
+  progress[many[10].id] = { ...reviewed(many[10].id), introducedAt: now.toISOString() };
+  expect(sessionNewLimit(many, progress, history(18), now)).toBe(5);
+});
+
+it('prioritizes a recently missed graduated word for follow-up', () => {
+  const pool = freshWords(2);
+  const base = {
+    ...reviewed('0', Array(10).fill(true)),
+    graduated: true,
+    reviewedAt: now.toISOString(),
+  };
+  const progress: Record<string, Progress> = {
+    '0': base,
+    '1': { ...base, wordId: '1', recent: [...Array(9).fill(true), false] },
+  };
+  const chosen = selectWords(pool, progress, now, undefined, { rng: () => 0.5 });
+  expect(chosen.map(word => word.id)).toEqual(['1', '0']);
+});
+
+it('exempts the first ten and allows three new words in the second session', () => {
+  const many = freshWords(30);
+  const progress = Object.fromEntries(
+    many.slice(0, 10).map((word, i) => [
+      word.id,
+      {
+        ...reviewed(word.id),
+        introducedAt: new Date(now.getTime() - 10000 + i * 100).toISOString(),
+      },
+    ]),
+  );
+  const history = many
+    .slice(0, 10)
+    .map(word => ({ wordId: word.id, correct: true, at: now.toISOString() }));
+  expect(sessionNewLimit(many, progress, history, now)).toBe(3);
+  expect(
+    selectWords(many, progress, now, undefined, { history }).filter(word => !progress[word.id]),
+  ).toHaveLength(3);
+  for (let i = 10; i < 20; i++)
+    progress[String(i)] = {
+      ...reviewed(String(i)),
+      introducedAt: new Date(now.getTime() - 1000 + i).toISOString(),
+    };
+  expect(sessionNewLimit(many, progress, history, now)).toBe(0);
+});
+
+it('rolls the post-bootstrap daily allowance forward after 24 hours', () => {
+  const many = freshWords(30);
+  const progress = Object.fromEntries(
+    many.slice(0, 20).map((word, i) => [
+      word.id,
+      {
+        ...reviewed(word.id),
+        introducedAt: new Date(now.getTime() - (i < 10 ? 20000 : 10000) + i).toISOString(),
+      },
+    ]),
+  );
+  const history = Array.from({ length: 20 }, (_, i) => ({
+    wordId: String(i),
+    correct: true,
+    at: now.toISOString(),
+  }));
+  expect(sessionNewLimit(many, progress, history, now)).toBe(0);
+  expect(sessionNewLimit(many, progress, history, new Date(now.getTime() + 86400000))).toBe(5);
 });

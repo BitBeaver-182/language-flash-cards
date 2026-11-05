@@ -66,7 +66,7 @@ it('searches every stored translation, not only the selected language', () => {
   expect(prepareDictionary(words, {}, 'mrkva', false, 'alphabet', true, now, 'sk')).toHaveLength(1);
 });
 
-it('orders estimated knowledge in both directions while leaving unassessed words last', () => {
+it('orders recent accuracy in both directions while leaving unassessed words last', () => {
   const words: Word[] = ['a', 'b', 'c'].map(hu => ({
     id: hu,
     hu,
@@ -91,7 +91,7 @@ it('orders estimated knowledge in both directions while leaving unassessed words
         reviewedAt: now.toISOString(),
         reviews: 1,
         removed: false,
-        recent: [],
+        recent: id === 'a' ? [false] : [true],
       },
     ]),
   );
