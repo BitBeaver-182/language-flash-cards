@@ -1,4 +1,10 @@
-import { countActiveWords, MAX_ACTIVE_WORDS, MAX_NEW_PER_SESSION, selectWords } from './session';
+import {
+  countActiveWords,
+  MAX_ACTIVE_WORDS,
+  MAX_NEW_PER_SESSION,
+  selectReplacement,
+  selectWords,
+} from './session';
 import { Word } from './vocabulary';
 
 const now = new Date('2026-01-08T00:00:00Z');
@@ -213,4 +219,67 @@ it('counts previously answered duplicate forms only once across topics', () => {
   expect(
     selectWords([...many, duplicate], progress, now).filter(word => !progress[word.id]),
   ).toHaveLength(9);
+});
+
+it('replaces a removed word with the weakest eligible review without repeating the queue', () => {
+  const many = freshWords(20);
+  const progress = Object.fromEntries(many.slice(0, 12).map(word => [word.id, reviewed(word.id)]));
+  progress['10'] = { ...progress['10'], strength: 0.1 };
+  const queue = [...many.slice(0, 9), many[12]];
+  const replacement = selectReplacement(many, progress, progress, queue, many[9], now);
+  expect(replacement?.id).toBe('10');
+});
+
+it('uses the freed new-word slot but does not exceed three new words after bootstrap', () => {
+  const many = freshWords(30);
+  const progress = Object.fromEntries(many.slice(0, 10).map(word => [word.id, reviewed(word.id)]));
+  const queue = [...many.slice(0, 7), many[10], many[11]];
+  const replacement = selectReplacement(many, progress, progress, queue, many[12], now);
+  expect(replacement).toBeDefined();
+  // Remaining reviews take priority, so no extra unseen word is needed.
+  expect(progress[replacement!.id]).toBeDefined();
+  const allReviewsQueued = [...many.slice(0, 10), ...many.slice(10, 12)];
+  const freshReplacement = selectReplacement(
+    many,
+    progress,
+    progress,
+    allReviewsQueued,
+    many[12],
+    now,
+  );
+  expect(freshReplacement).toBeDefined();
+  expect(progress[freshReplacement!.id]).toBeUndefined();
+  const threeQueued = [...allReviewsQueued, freshReplacement!];
+  expect(selectReplacement(many, progress, progress, threeQueued, many[13], now)).toBeUndefined();
+});
+
+it('does not reuse a duplicate form, a removed word, or a word outside the topic', () => {
+  const many = freshWords(12).map((word, i) => ({ ...word, tags: [i < 10 ? 'a' : 'b'] }));
+  const duplicate = { ...many[0], id: 'duplicate' };
+  const progress = Object.fromEntries(many.map(word => [word.id, reviewed(word.id)]));
+  const queue = many.slice(0, 9);
+  expect(
+    selectReplacement([...many, duplicate], progress, progress, queue, many[9], now, 'a'),
+  ).toBeUndefined();
+});
+
+it('reserves active slots for queued new words and frees a removed active slot', () => {
+  const many = freshWords(45);
+  const progress = Object.fromEntries(many.slice(0, 35).map(word => [word.id, reviewed(word.id)]));
+  // One unreviewed word already reserves the final active slot; no other new word fits.
+  const allReviews = [...many.slice(0, 35), many[35]];
+  expect(selectReplacement(many, progress, progress, allReviews, many[36], now)).toBeUndefined();
+  const removedActive = many[0];
+  const queue = [...many.slice(1, 35), many[35]];
+  const replacement = selectReplacement(many, progress, progress, queue, removedActive, now);
+  expect(replacement).toBeDefined();
+  expect(progress[replacement!.id]).toBeUndefined();
+});
+
+it('replaces ignored new words during the initial ten without consuming an extra place', () => {
+  const many = freshWords(12);
+  const replacement = selectReplacement(many, {}, {}, many.slice(1, 10), many[0], now);
+  expect(replacement).toBeDefined();
+  expect(many.slice(1, 10)).not.toContain(replacement);
+  expect(replacement?.id).not.toBe('0');
 });

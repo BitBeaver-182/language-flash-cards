@@ -5,12 +5,14 @@ export const MAX_ACTIVE_WORDS = 36;
 export const MAX_NEW_PER_SESSION = 3;
 const SESSION_SIZE = 10;
 
+const formOf = (word: Word) => word.hu.trim().normalize('NFC').toLocaleLowerCase();
+
 function groupWords(words: Word[], progress: Record<string, Progress>, topic?: string) {
   const groups = new Map<string, Word[]>();
   for (const word of words) {
     if (!word.eligible || progress[word.id]?.removed || (topic && !word.tags.includes(topic)))
       continue;
-    const key = word.hu.normalize('NFC').toLocaleLowerCase();
+    const key = formOf(word);
     groups.set(key, [...(groups.get(key) ?? []), word]);
   }
   return groups;
@@ -28,11 +30,26 @@ export function countActiveWords(words: Word[], progress: Record<string, Progres
   return count;
 }
 
+export function sessionNewLimit(words: Word[], progress: Record<string, Progress>): number {
+  const practicedForms = new Set(
+    words.filter(word => (progress[word.id]?.reviews ?? 0) > 0).map(formOf),
+  );
+  const initialRemaining = Math.max(0, SESSION_SIZE - practicedForms.size);
+  return initialRemaining > 0 ? initialRemaining : MAX_NEW_PER_SESSION;
+}
+
+interface SelectionOptions {
+  excludedForms?: Set<string>;
+  maxNew?: number;
+  reservedActiveSlots?: number;
+}
+
 export function selectWords(
   words: Word[],
   progress: Record<string, Progress>,
   now: Date,
   topic?: string,
+  options: SelectionOptions = {},
 ): Word[] {
   // Group related dictionary entries so another translation of a reviewed
   // Hungarian word cannot consume a new-word slot.
@@ -41,6 +58,7 @@ export function selectWords(
   const fresh: { word: Word; random: number }[] = [];
   const reviews: { word: Word; recall: number; recent: boolean; random: number }[] = [];
   for (const group of groups.values()) {
+    if (options.excludedForms?.has(formOf(group[0]))) continue;
     const reviewed = group
       .map(word => ({ word, recall: estimateRecall(progress[word.id], now) }))
       .filter((entry): entry is { word: Word; recall: number } => entry.recall !== null)
@@ -59,22 +77,11 @@ export function selectWords(
     (a, b) => Number(a.recent) - Number(b.recent) || a.recall - b.recall || a.random - b.random,
   );
 
-  // The initial learning allowance is based on words actually answered, across
-  // all topics. Removed-but-never-answered words do not consume it. A word
-  // answered before removal still counts as practiced, so removing it cannot
-  // reopen the initial allowance after the learner reaches ten.
-  const practicedForms = new Set(
-    words
-      .filter(word => (progress[word.id]?.reviews ?? 0) > 0)
-      .map(word => word.hu.normalize('NFC').toLocaleLowerCase()),
-  );
-  const initialRemaining = Math.max(0, SESSION_SIZE - practicedForms.size);
-  const sessionNewLimit = initialRemaining > 0 ? initialRemaining : MAX_NEW_PER_SESSION;
   const activeCount = countActiveWords(words, progress);
   const newCount = Math.min(
     fresh.length,
-    sessionNewLimit,
-    Math.max(0, MAX_ACTIVE_WORDS - activeCount),
+    options.maxNew ?? sessionNewLimit(words, progress),
+    Math.max(0, MAX_ACTIVE_WORDS - activeCount - (options.reservedActiveSlots ?? 0)),
   );
   const reviewCount = Math.min(reviews.length, SESSION_SIZE - newCount);
   const size = newCount + reviewCount;
@@ -92,4 +99,41 @@ export function selectWords(
     }
   }
   return selected;
+}
+
+/** Select one replacement without repeating a queued form or exceeding the
+ * session's original new-word allowance and the global active-word limit. */
+export function selectReplacement(
+  words: Word[],
+  progress: Record<string, Progress>,
+  sessionStartProgress: Record<string, Progress>,
+  queue: Word[],
+  removed: Word,
+  now: Date,
+  topic?: string,
+): Word | undefined {
+  const removedForm = formOf(removed);
+  const excludedForms = new Set([...queue.map(formOf), removedForm]);
+  const initiallyReviewed = new Set(
+    words.filter(word => (sessionStartProgress[word.id]?.reviews ?? 0) > 0).map(formOf),
+  );
+  const currentlyReviewed = new Set(
+    words.filter(word => (progress[word.id]?.reviews ?? 0) > 0).map(formOf),
+  );
+  const queuedNew = new Set(queue.map(formOf).filter(form => !initiallyReviewed.has(form)));
+  const pendingNew = [...queuedNew].filter(form => !currentlyReviewed.has(form)).length;
+  const newBudget = Math.max(0, sessionNewLimit(words, sessionStartProgress) - queuedNew.size);
+  // Removal is dispatched separately; reflect all same-form variants here before
+  // evaluating eligibility and active capacity, without mutating the store.
+  const afterRemoval = { ...progress };
+  for (const word of words) {
+    if (formOf(word) === removedForm && afterRemoval[word.id]) {
+      afterRemoval[word.id] = { ...afterRemoval[word.id], removed: true };
+    }
+  }
+  return selectWords(words, afterRemoval, now, topic, {
+    excludedForms,
+    maxNew: newBudget,
+    reservedActiveSlots: pendingNew,
+  })[0];
 }

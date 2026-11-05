@@ -32,7 +32,12 @@ import {
 import { syncRemindersAsync } from '@/services/reminders.service';
 import { State } from '@/utils/store';
 import { estimateRecall } from '@/utils/recall';
-import { countActiveWords, MAX_ACTIVE_WORDS, selectWords } from '@/utils/session';
+import {
+  countActiveWords,
+  MAX_ACTIVE_WORDS,
+  selectReplacement,
+  selectWords,
+} from '@/utils/session';
 import { makeChoices } from '@/utils/choices';
 import { getReminderMinutes } from '@/utils/reminderSchedule';
 import { getWeekProgress, summarizeSessions } from '@/utils/sessionHistory';
@@ -228,6 +233,7 @@ export default function Home() {
   const [status, setStatus] = useState('');
   const [today, setToday] = useState(() => new Date());
   const lastNotification = useRef('');
+  const [sessionStartProgress, setSessionStartProgress] = useState(progress);
   const [sessionStats, setSessionStats] = useState<{
     id: string;
     correct: number;
@@ -285,6 +291,7 @@ export default function Home() {
         lastNotification.current !== key
       ) {
         lastNotification.current = key;
+        setSessionStartProgress(progress);
         setQueue(selectWords(words, progress, new Date()));
         setSessionStats({
           id: createSessionId(),
@@ -320,6 +327,7 @@ export default function Home() {
     );
   }
   function start() {
+    setSessionStartProgress(progress);
     setQueue(selectWords(words, progress, new Date(), topic || undefined));
     setSessionStats({ id: createSessionId(), correct: 0, total: 0, topic, answers: [] });
     setIndex(0);
@@ -725,6 +733,16 @@ export default function Home() {
                           itemIndex < index ||
                           item.hu.toLocaleLowerCase() !== word.hu.toLocaleLowerCase(),
                       );
+                      const replacement = selectReplacement(
+                        words,
+                        progress,
+                        sessionStartProgress,
+                        nextQueue,
+                        word,
+                        new Date(),
+                        sessionStats.topic || undefined,
+                      );
+                      if (replacement) nextQueue.splice(index, 0, replacement);
                       setQueue(nextQueue);
                       setRevealed(false);
                       setChoiceResult(null);

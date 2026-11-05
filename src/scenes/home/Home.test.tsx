@@ -464,7 +464,7 @@ it('presents multiple choice for recognition cards with capitalized options', as
   await userEvent.press(screen.getByText('Continue'));
 });
 
-it('does not count a removed word as practiced or replace it with a new word', async () => {
+it('replaces a removed word without counting it as practiced', async () => {
   jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
     buttons?.find(button => button.style === 'destructive')?.onPress?.();
   });
@@ -478,7 +478,7 @@ it('does not count a removed word as practiced or replace it with a new word', a
   await userEvent.press(screen.getByText('Begin session'));
   expect(screen.getByText(/1 \/ 10/)).toBeTruthy();
   await userEvent.press(screen.getByTestId('remove-word'));
-  expect(screen.getByText(/1 \/ 9/)).toBeTruthy();
+  expect(screen.getByText(/1 \/ 10/)).toBeTruthy();
   expect(select).toHaveBeenCalledTimes(1);
   expect(store.getState().learning.sessions).toHaveLength(0);
 });
