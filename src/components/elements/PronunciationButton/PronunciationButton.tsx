@@ -73,7 +73,7 @@ export function PronunciationButton({ text }: PronunciationButtonProps) {
         testID="pronounce-slow"
         style={styles.button}
         onPress={() => void speak(true)}>
-        <Text style={[styles.slow, { color: isDark ? colors.darkTeal : colors.teal }]}>0.7×</Text>
+        <Text style={[styles.slow, { color: isDark ? colors.darkTeal : colors.teal }]}>0.5×</Text>
       </TouchableOpacity>
     </View>
   );

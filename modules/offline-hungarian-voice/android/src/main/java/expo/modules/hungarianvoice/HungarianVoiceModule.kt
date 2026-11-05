@@ -75,7 +75,7 @@ class HungarianVoiceModule : Module() {
             tts.setVoice(voice) != TextToSpeech.SUCCESS -> promise.resolve("error")
             tts.voice?.name != voice.name || tts.voice?.isNetworkConnectionRequired != false -> promise.resolve("error")
             else -> {
-              if (tts.setSpeechRate(if (slow) 0.72f else 1.0f) != TextToSpeech.SUCCESS) {
+              if (tts.setSpeechRate(if (slow) 0.5f else 1.0f) != TextToSpeech.SUCCESS) {
                 promise.resolve("error")
               } else {
                 utterances.values.forEach { it.resolve("interrupted") }
