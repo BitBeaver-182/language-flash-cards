@@ -10,7 +10,7 @@ A review request does not authorize edits.
 
 ## Inspect
 
-- Choose the base from the [branch table](../../../AGENTS.md#branches): `dev` for work branches, `main` for hotfixes. Ask when the branch prefix does not identify one.
+- Choose the base from the [branch table](../../../AGENTS.md#branches): `main` for all work branches. Ask when the branch prefix does not identify one.
 - Read `git diff --name-only <base>...HEAD` and `git diff <base>...HEAD`.
 - Read `AGENTS.md`, including [Git rules](../../../AGENTS.md#git).
 - Exclude `package-lock.json`, `node_modules/`, `ios/`, `android/`, `dist/`, and `coverage/` from this rules review. Report excluded scope.

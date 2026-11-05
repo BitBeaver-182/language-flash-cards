@@ -24,7 +24,7 @@ Say goodbye to time-consuming setup tasks like restructuring files, installing l
 - 🎨 **Light/Dark theme** support with automatic detection
 - 🔄 **Redux Toolkit** for predictable state management
 - 📦 **Environment configuration** with dotenvx for dev, stg, and prod
-- 🌿 **Branch flow**: `dev` → `stg` → `main`, with agent skills to promote and release
+- 🌿 **Branch flow**: work branches → `main`, with agent skills to review and release
 - 🚀 **CI/CD workflows** with EAS Build and Preview channels
 - 🛠️ **Modern tooling**: ESLint 9 (flat config), Prettier, Jest 30, TypeScript 6
 - 🌐 **Multi-platform**: iOS, Android, and Web distribution
@@ -214,7 +214,7 @@ The project maintains code quality through integrated Eslint, Prettier, and Jest
 
 ####
 
-- Branches: work branches merge into `dev`. Promote `dev` → `stg` for staging tests, then `stg` → `main` for production. Releases are tagged on `main`.
+- Branches: work branches merge into `main`. Releases are tagged on `main`.
 - When you've completed your work and need to share a preview with the QA team, our boilerplate automates the distribution process for you. Here's how it works:
 1. Whenever you create a pull request (PR) or merge, it automatically generates a preview channel in your Expo account.
 2. You don't need to run 'eas' commands every time you create a PR; the process is streamlined for you.
@@ -225,7 +225,7 @@ To set up the CD workflow, follow these steps:
 2. In your GitHub repository, go to **Settings**, then navigate to **Secrets and variables** -> **Actions** -> **Add new repository secret**. Make sure to name the secret as `EXPO_TOKEN`.
 3. Update `name`, `slug`, `owner`, `projectId` and `url` in [app.json](https://github.com/wataru-maeda/react-native-boilerplate/blob/main/app.json):
 4. Update in `name`, `slug`, `projectId`, `ios`, `android` in [app.config.ts](https://github.com/wataru-maeda/react-native-boilerplate/blob/main/app.config.ts)
-5. After you push changes to `dev`, `stg`, or `main`, a new update is published to the EAS branch with the same name.
+5. After you push changes to `main`, a new update is published to the EAS branch with the same name.
 
 </details>
 
