@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+---
+- runFlow: subflows/launch.yaml
+- tapOn:
+    id: start-practice
+- tapOn:
+    id: begin-session
+- assertVisible:
+    id: pronounce-normal
+- assertVisible:
+    id: pronounce-slow
+- tapOn:
+    id: nav-settings
+- assertVisible: Hungarian voice
+- assertVisible:
+    id: voice-recheck
